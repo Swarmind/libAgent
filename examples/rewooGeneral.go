@@ -70,18 +70,16 @@ func main() {
 	}
 	rewooAgent.ToolsExecutor = toolsExecutor
 
-	for idx, prompt := range []string{InnerReWOOTestPrompt, HackerTestPrompt} {
-		result, err := rewooAgent.SimpleRun(ctx, prompt)
-		if err != nil {
-			log.Fatal().Err(err).Msg("main rewooAgent.SimpleRun")
-		}
+    result, err := rewooAgent.SimpleRun(ctx, HackerTestPrompt)
+    if err != nil {
+        log.Fatal().Err(err).Msg("main rewooAgent.SimpleRun")
+    }
 
-		if result == "" {
-			log.Fatal().Msg("main empty result")
-		}
+    if result == "" {
+        log.Fatal().Msg("main empty result")
+    }
 
-		log.Info().Str("result", result).Int("prompt index", idx).Msg("examples/rewooGeneral")
-	}
+    log.Info().Str("result", result).Msg("examples/hacker")
 }
 
 func getEnv(key string) string {
