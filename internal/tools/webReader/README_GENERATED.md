@@ -1,1 +1,17 @@
-"# webreader\n\ninternal/tools/webReader/webReader.go\n\n\"Package: webreader\\n\\nImports:\\n\\\"fmt\\\"\\n\\\"io\\\"\\n\\\"net/http\\\"\\n\\\"strings\\\"\\n\\\"time\\\"\\n\\\"github.com/JohannesKaufmann/html-to-markdown/v2\\\"\\n\\\"github.com/JohannesKaufmann/html-to-markdown/v2/converter\\\"\\n\\\"github.com/PuerkitoBio/goquery\\\"\\n\\\"github.com/go-rod/rod\\\"\\n\\\"github.com/go-rod/rod/lib/proto\\\"\\n\\nExternal data, input sources:\\nThe code uses external data from the provided URL to process and convert it into Markdown format.\\n\\nTODOs:\\nThere are no TODO comments in the code.\\n\\nSummary:\\nThe webreader package provides a function to process a given URL and convert its content into Markdown format. It first checks if the page requires JavaScript to be executed. If it does, it uses a headless browser to load the page and extract the HTML content. Otherwise, it directly fetches the HTML content from the URL. Finally, it uses the html-to-markdown library to convert the HTML content into Markdown format.\\n\\nThe ProcessUrl function takes a URL as input and returns the Markdown content of the page, along with any errors encountered during the process.\\n\\nThe loadJSPage function is responsible for loading a page that requires JavaScript execution. It uses a headless browser to load the page and extract the HTML content.\\n\\nThe checkNoScript function checks if a given URL requires JavaScript execution by looking for the presence of the \\\"noscript\\\" tag in the HTML content.\\n\\nThe code also includes error handling and resource cleanup to ensure proper functioning and resource management.\"\n\nThe webreader package provides a function to process a given URL and convert its content into Markdown format. It first checks if the page requires JavaScript to be executed. If it does, it uses a headless browser to load the page and extract the HTML content. Otherwise, it directly fetches the HTML content from the URL. Finally, it uses the html-to-markdown library to convert the HTML content into Markdown format.\n\nThe ProcessUrl function takes a URL as input and returns the Markdown content of the page, along with any errors encountered during the process.\n\nThe loadJSPage function is responsible for loading a page that requires JavaScript execution. It uses a headless browser to load the page and extract the HTML content.\n\nThe checkNoScript function checks if a given URL requires JavaScript execution by looking for the presence of the \"noscript\" tag in the HTML content.\n\nThe code also includes error handling and resource cleanup to ensure proper functioning and resource management."
+webreader
+
+This package provides functionality to process URLs, convert HTML content to Markdown, and handle JavaScript-rendered web pages. It includes functions to check if a URL requires JavaScript, load pages with or without JavaScript support, and convert HTML to Markdown while preserving domain information in links.
+
+External Data/Config:
+- URLs must be valid HTTP(S) endpoints
+- HTML content must comply with standard DOM structures
+- JS rendering behavior depends on browser automation (go-rod)
+- Markdown conversion preserves original domain via `converter.WithDomain()`
+
+Notes:
+- No TODOs or comments in code
+- Error handling is present but some errors are not explicitly logged
+- Resource cleanup (browser/page close) is handled via `defer`
+- Conversion may produce inconsistent results for dynamically generated content
+- `checkNoScript()` only detects explicit "javascript" references in `<noscript>` tags, not script tags or JS functionality
+- `loadJSPage()` has a 5s timeout for DOM stability on complex pages
