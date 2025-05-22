@@ -1,27 +1,23 @@
-# main
+# hacker
 
-This package is a command-line tool that handles user input, executes tools, and processes results. It is part of the examples directory and includes multiple files.
+## Overview
+This package provides a command-line interface for interacting with the ReWOO tool, handling user input, and executing tasks through a configured tools executor. It is part of a larger system involving configuration management and tool execution.
 
-## Package Files
-- `main.go`: Contains the main entry point for the example.
-- `examples/hacker/main.go`: Another entry point for a different example.
+## File Structure
+- `main.go`: Contains the entry point and core logic for user interaction, tool invocation, and result handling.
 
-## External Data/Config Options
-- **Config File**: Loaded via `config.NewConfig()`; must be valid.
-- **Config Fields**:
-  - `SemanticSearchDisable` (bool): Disables semantic search in the tool.
+## Behavior Control
+### External Configuration Options
+- `cfg.SemanticSearchDisable` (bool): Disables semantic search in the configuration. Default: `false`.
 
-## Behavior
-The package's behavior is affected by the configuration, such as disabling semantic search.
+## Key Details
+- **ReWOO Tool**: Invoked with a fixed `Prompt` constant; its purpose and `ReWOOToolArgs` structure are not documented.
+- **Configuration**: Initializes a config object with `SemanticSearch` disabled by default.
+- **Tool Execution**: Uses `tools.NewToolsExecutor` and handles cleanup via `defer`.
 
-## Edge Cases
-- If user input is empty, the tool may fail (no handling for this).
-- If `toolsExecutor.CallTool` returns an error, the program exits with a fatal log.
-- If the tool returns an empty result, the program exits with a fatal log.
-
-## Assumptions
-- The tool `tools.ReWOOToolDefinition.Name` is available and properly configured.
-- The tool's response is expected to be a non-empty string.
-
-## Notes
-- No TODOs or comments in the code.
+## Issues & Notes
+- No validation for empty user input (scanner.Scan() could fail).
+- No handling for invalid JSON marshaling (errors are logged but not addressed).
+- `toolsExecutor.Cleanup()` is deferred but errors are not checked beyond logging.
+- The `Prompt` constant is hard-coded and cannot be modified via configuration.
+- The initial comment mentions "manual use of specific tool" but does not explain the ReWOO tool's purpose or `ReWOOToolArgs` expectations.

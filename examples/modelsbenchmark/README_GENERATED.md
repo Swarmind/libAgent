@@ -1,24 +1,34 @@
-# main
+# modelsbenchmark
 
-This package is a benchmarking tool that tests different models by executing a set of tasks. It iterates over a list of 20 model identifiers, runs a multi-step task plan, and handles errors and edge cases.
+## Overview
+A benchmarking tool for evaluating model behavior using the ReWOO framework. Executes tests against a hardcoded list of models, focusing on model response handling and resource management.
 
-## Package File Structure
-- `main.go` (in `examples/` directory): Contains the main logic for benchmarking.
-- `main.go` (in `examples/modelsbenchmark/` directory): Part of the same `main` package, likely containing specialized benchmarking functionality.
+## File Structure
+- `main.go`: Contains the entry point and core benchmarking logic.
 
-## Description
-The package is designed to evaluate model behavior by executing a predefined set of tasks (e.g., file operations, port checks, Git operations) against a list of 20 model identifiers. It uses a `ReWOO` tool to execute tasks and handles errors by logging and sleeping for 2 minutes (except for the last model).
+## Package Functionality
+- Benchmarks models by executing the ReWOO tool with a fixed prompt
+- Supports model testing through the `ModelList` (hardcoded) and `Prompt` (static)
+- Manages tool execution via `toolsExecutor` with ReWOO and CommandExecutor tools
 
-## Configuration/External Data
-- **Configuration**: `config.NewConfig()` (loads external configuration, not shown in code).
-- **Tools**: Supports `ReWOOTool` and `CommandExecutor` (whitelisted).
-- **ModelList**: 20 model identifiers (e.g., "qwen3-32b", "gemma-3-27b-it").
-- **Prompt**: 11 sequential tasks (file operations, port checks, Git operations, etc).
+## Configuration & Behavior
+**External Data/Config Options:**
+- `config.NewConfig()`: Loads configuration (not shown in code)
+- `cfg.Model`: Dynamically set to each model in `ModelList`
+- `toolsExecutor`: Uses `ReWOOTool` and `CommandExecutor` (whitelisted)
 
-## Edge Cases/Notes
-- The **last model** in `ModelList` does **not** trigger a 2-minute sleep after errors.
-- `ToolsExecutor` is **recreated and cleaned** for each model.
-- `ReWOO` is **executed for every model**.
-- The code **exits on fatal errors** (e.g., config loading failure).
-- **Non-OK status** from `ReWOO` is **not handled**.
-- **LocalAI watchdog** is handled via 2-minute sleeps (explicitly coded).
+**Behavior Notes:**
+- Model testing is non-interactive (fixed prompt and model list)
+- Includes a 2-minute sleep between tests (unexplained in code)
+- `toolsExecutor.Cleanup()` is called after each iteration (purpose unclear)
+
+## Issues & Concerns
+- **Invalid Models**: Contains unsupported model names (e.g., "mlabonne_qwen3-8b-abliterated")
+- **Unclear Logic**: 
+  - `toolsExecutor.Cleanup()` purpose is undefined
+  - `ReWOOTool` response handling is undocumented
+  - `time.Sleep(2 * time.Minute)` is used for LocalAI watchdog behavior (not explained)
+- **Inefficiency**: `toolsExecutor` is recreated for each model (could be optimized)
+
+## Status
+This is a prototype benchmarking implementation with several unresolved edge cases and potential optimizations.
