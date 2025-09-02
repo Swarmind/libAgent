@@ -1,1 +1,16 @@
-"# simple\n\npkg/agent/simple/agent.go\nagent.go\n\nThe package provides a simple way to interact with an OpenAI LLM and receive responses in a structured format. It defines an `Agent` struct with two main methods: `Run` and `SimpleRun`. Both methods use the LLM to generate a response based on the input provided and return the response content in JSON format.\n\nThe `Run` method takes a context, a slice of message content, and optional call options as input. The `SimpleRun` method takes a context, an input string, and optional call options as input.\n\nThe code uses the OpenAI API to interact with a large language model.\n\n\u003cend_of_output\u003e"
+# simple
+
+The `simple` package provides an agent that uses an OpenAI LLM to generate responses. It includes two methods: `Run` for handling chat states and `SimpleRun` for single-message interactions.
+
+**External Dependencies**  
+- The `openai.LLM` instance must be configured externally (e.g., API keys, model parameters). No configuration options are exposed by this package.
+
+**Limitations**  
+- No handling for empty chat state in `Run` method.  
+- No error handling for empty response `Choices[0].Content`.  
+- No validation for `LLM` instance being `nil`.  
+- No rate-limiting or retry logic implemented.  
+
+**Notes**  
+- The package assumes `LLM.GenerateContent` returns at least one choice.  
+- No TODOs or comments present in the code.
