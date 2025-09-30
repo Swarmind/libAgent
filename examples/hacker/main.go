@@ -1,11 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 
 	"github.com/Swarmind/libagent/pkg/config"
 	"github.com/Swarmind/libagent/pkg/tools"
@@ -15,14 +16,51 @@ import (
 )
 
 /*
-	This example shows how to manually use specific tool, without calling it through llm tool call.
+	This example shows usage of command executor with rewoo tool, which are whitelisted.
 */
 
-const Prompt = `You are a hacking assistant with access to various tools for research.
-Given user mission - find a possible attack vector and create a plan.
+const Prompt = `Please scan 192.168.1.0 and 192.168.1.1  for open ports and generate Metasploit search queries for any found services.`
 
-User Mission: 
-%s`
+type NmapToolArgs struct {
+	IP string `json:"ip"`
+}
+
+// struct для описания найденного порта
+type PortInfo struct {
+	Port    string
+	State   string
+	Service string
+}
+
+func parseNmapPorts(nmapOutput string) []PortInfo {
+	var ports []PortInfo
+	re := regexp.MustCompile(`(\d+)\/tcp\s+(\w+)\s+(.+?)\s*`)
+	matches := re.FindAllStringSubmatch(nmapOutput, -1)
+
+	for _, match := range matches {
+		if len(match) >= 4 {
+			ports = append(ports, PortInfo{
+				Port:    match[1],
+				State:   strings.TrimSpace(match[2]),
+				Service: strings.TrimSpace(match[3]),
+			})
+		}
+	}
+
+	return ports
+}
+
+func generateMsfQueries(ports []PortInfo) []string {
+	var queries []string
+	for _, port := range ports {
+		if strings.ToLower(port.State) == "open" {
+			queries = append(queries, fmt.Sprintf("type:exploit name:%s", port.Service))
+			queries = append(queries, fmt.Sprintf("port %s", port.Port))
+		}
+	}
+
+	return queries
+}
 
 func main() {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -32,11 +70,15 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("new config")
 	}
-	cfg.SemanticSearchDisable = true
 
 	ctx := context.Background()
 
-	toolsExecutor, err := tools.NewToolsExecutor(ctx, cfg)
+	toolsExecutor, err := tools.NewToolsExecutor(ctx, cfg, tools.WithToolsWhitelist(
+		tools.ReWOOToolDefinition.Name,
+		tools.CommandExecutorDefinition.Name,
+		tools.NmapToolDefinition.Name,
+		tools.MsfSearchToolDefinition.Name,
+	))
 	if err != nil {
 		log.Fatal().Err(err).Msg("new tools executor")
 	}
@@ -46,15 +88,8 @@ func main() {
 		}
 	}()
 
-	fmt.Println("Enter you task:")
-	userMission := ""
-	scanner := bufio.NewScanner(os.Stdin)
-	if scanner.Scan() {
-		userMission = scanner.Text()
-	}
-
 	rewooQuery := tools.ReWOOToolArgs{
-		Query: fmt.Sprintf(Prompt, userMission),
+		Query: Prompt,
 	}
 	rewooQueryBytes, err := json.Marshal(rewooQuery)
 	if err != nil {
@@ -69,9 +104,5 @@ func main() {
 		log.Fatal().Err(err).Msg("rewoo tool call")
 	}
 
-	if result == "" {
-		log.Fatal().Msg("main empty result")
-	}
-
-	fmt.Printf("Task:\n%s\n\nResult:\n%s\n", userMission, result)
+	fmt.Println(result)
 }

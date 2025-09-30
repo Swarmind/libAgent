@@ -37,6 +37,7 @@ type Config struct {
 	WebReaderDisable bool `env:"WEB_READER_DISABLE"`
 
 	NmapDisable bool `env:"NMAP_DISABLE"`
+	MsfDisable  bool `env:"MSF_DISABLE"`
 
 	CommandExecutorDisable  bool              `env:"COMMAND_EXECUTOR_DISABLE"`
 	CommandExecutorCommands map[string]string `env:"COMMAND_EXECUTOR_CMD_*"`
