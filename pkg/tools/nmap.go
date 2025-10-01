@@ -94,6 +94,8 @@ func (s NmapTool) Call(ctx context.Context, input string) (string, error) {
 	}
 
 	ports := parseNmapPorts(string(output))
+
+	//TODO: should be in another pkg
 	msfQueries := GenerateMsfQueries(ports)
 
 	response := fmt.Sprintf("Used args: %v\n\nGenerated Metasploit queries: %v", args, msfQueries)
