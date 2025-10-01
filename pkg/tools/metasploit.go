@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/Swarmind/libagent/internal/tools"
 	"github.com/Swarmind/libagent/pkg/config"
 	"github.com/tmc/langchaingo/llms"
 )
 
-var MsfSearchToolDefinition = llms.FunctionDefinition{ // Переименовано на MsfSearchToolDefinition
-	Name:        "msf_search", // Переименовано на msf_search
+var MsfSearchToolDefinition = llms.FunctionDefinition{
+	Name:        "msf_search",
 	Description: "Executes Metasploit search queries provided in a list.",
 	Parameters: map[string]any{
 		"type": "object",
@@ -25,33 +26,82 @@ var MsfSearchToolDefinition = llms.FunctionDefinition{ // Переименова
 	},
 }
 
-type MsfSearchTool struct{} // Переименовано на MsfSearchTool
+type MsfSearchTool struct {
+	executable   string
+	argsTemplate string // template with one %s for the query -- `search %s; exit`
+}
 
-type MsfSearchToolArgs struct { // Переименовано на MsfSearchToolArgs
+type MsfSearchToolArgs struct {
 	Queries []string `json:"queries"`
 }
 
-// Call executes the Metasploit search commands with the given queries.
-func (s MsfSearchTool) Call(ctx context.Context, input string) (string, error) { // Переименовано на MsfSearchTool
-	msfToolArgs := MsfSearchToolArgs{} // Переименовано на MsfSearchToolArgs
+var (
+	msfExecutable   = "msfconsole"
+	msfArgsTemplate = "search %s; exit" // will be passed to msfconsole like "-q -x"
+)
+
+func SetMsfCommand(executable string, argsTemplate string) {
+	if executable != "" {
+		msfExecutable = executable
+	}
+	if argsTemplate != "" {
+		msfArgsTemplate = argsTemplate
+	}
+}
+
+// constructs args as []string{"-q", "-x", fmt.Sprintf(msfArgsTemplate, query)}
+func (s MsfSearchTool) Call(ctx context.Context, input string) (string, error) {
+	msfToolArgs := MsfSearchToolArgs{}
 	if err := json.Unmarshal([]byte(input), &msfToolArgs); err != nil {
 		return "", fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
 
-	var results []string
+	var results []map[string]string
 	for _, query := range msfToolArgs.Queries {
-		cmd := exec.Command("msfconsole", "-q", "-x", "search "+query+"; exit")
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return "", fmt.Errorf("failed to execute msfconsole for query '%s': %w", query, err)
+		cmdArg := fmt.Sprintf(msfArgsTemplate, query)
+		args := []string{"-q", "-x", cmdArg}
+
+		execName := s.executable
+		if execName == "" {
+			execName = msfExecutable
 		}
 
-		results = append(results, string(output))
+		cmd := exec.Command(execName, args...)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return "", fmt.Errorf("failed to execute %s %v: %w\noutput: %s", execName, args, err, string(output))
+		}
+
+		results = append(results, map[string]string{
+			"query":  query,
+			"output": string(output),
+		})
 	}
 
-	// Формирование ответа для LangChainGo
-	response := fmt.Sprintf("Metasploit search results: %v", results)
-	return response, nil
+	respBytes, err := json.Marshal(struct {
+		Tool    string              `json:"tool"`
+		Results []map[string]string `json:"results"`
+	}{
+		Tool:    msfExecutable,
+		Results: results,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	return string(respBytes), nil
+}
+
+func GenerateMsfQueries(ports []PortInfo) []string {
+	var queries []string
+	for _, port := range ports {
+		if strings.ToLower(port.State) == "open" {
+			queries = append(queries, fmt.Sprintf("type:exploit name:%s", port.Service))
+			queries = append(queries, fmt.Sprintf("port %s", port.Port))
+		}
+	}
+
+	return queries
 }
 
 func init() {
@@ -61,9 +111,14 @@ func init() {
 				return nil, nil
 			}
 
+			tool := MsfSearchTool{
+				executable:   "",
+				argsTemplate: "",
+			}
+
 			return &tools.ToolData{
 				Definition: MsfSearchToolDefinition,
-				Call:       MsfSearchTool{}.Call,
+				Call:       tool.Call,
 			}, nil
 		},
 	)

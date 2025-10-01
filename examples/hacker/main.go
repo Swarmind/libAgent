@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"regexp"
-	"strings"
 
 	"github.com/Swarmind/libagent/pkg/config"
 	"github.com/Swarmind/libagent/pkg/tools"
@@ -23,43 +21,6 @@ const Prompt = `Please scan 192.168.1.0 and 192.168.1.1  for open ports and gene
 
 type NmapToolArgs struct {
 	IP string `json:"ip"`
-}
-
-// struct для описания найденного порта
-type PortInfo struct {
-	Port    string
-	State   string
-	Service string
-}
-
-func parseNmapPorts(nmapOutput string) []PortInfo {
-	var ports []PortInfo
-	re := regexp.MustCompile(`(\d+)\/tcp\s+(\w+)\s+(.+?)\s*`)
-	matches := re.FindAllStringSubmatch(nmapOutput, -1)
-
-	for _, match := range matches {
-		if len(match) >= 4 {
-			ports = append(ports, PortInfo{
-				Port:    match[1],
-				State:   strings.TrimSpace(match[2]),
-				Service: strings.TrimSpace(match[3]),
-			})
-		}
-	}
-
-	return ports
-}
-
-func generateMsfQueries(ports []PortInfo) []string {
-	var queries []string
-	for _, port := range ports {
-		if strings.ToLower(port.State) == "open" {
-			queries = append(queries, fmt.Sprintf("type:exploit name:%s", port.Service))
-			queries = append(queries, fmt.Sprintf("port %s", port.Port))
-		}
-	}
-
-	return queries
 }
 
 func main() {

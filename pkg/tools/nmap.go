@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -15,13 +16,20 @@ import (
 
 var NmapToolDefinition = llms.FunctionDefinition{
 	Name:        "nmap",
-	Description: "Executes nmap -v -T4 -PA -sV --version-all --osscan-guess -A -sS -p 1-65535 [IP], parses the output, and generates Metasploit search queries.",
+	Description: "Executes nmap with configurable args (or uses sane defaults), parses the output, and generates Metasploit search queries.",
 	Parameters: map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"ip": map[string]any{
 				"type":        "string",
-				"description": "The valid IP address to scan to.",
+				"description": "The valid IP address to scan.",
+			},
+			"args": map[string]any{
+				"type":        "array",
+				"description": "Optional array of nmap arguments (e.g. [\"-sV\",\"-p\",\"1-1000\"]). If omitted, defaults are used.",
+				"items": map[string]any{
+					"type": "string",
+				},
 			},
 		},
 	},
@@ -30,10 +38,10 @@ var NmapToolDefinition = llms.FunctionDefinition{
 type NmapTool struct{}
 
 type NmapToolArgs struct {
-	IP string `json:"ip"`
+	IP   string   `json:"ip"`
+	Args []string `json:"args,omitempty"`
 }
 
-// struct для описания найденного порта
 type PortInfo struct {
 	Port    string
 	State   string
@@ -47,24 +55,54 @@ func (s NmapTool) Call(ctx context.Context, input string) (string, error) {
 		return "", fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
 
-	cmd := exec.Command("nmap", "-v", "-T4", "-PA", "-sV", "--version-all", "-osscan-guess", "-A", "-sS", "-p", "1-65535", nmapToolArgs.IP)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("failed to execute Nmap: %w", err)
+	if nmapToolArgs.IP == "" || net.ParseIP(nmapToolArgs.IP) == nil {
+		return "", fmt.Errorf("invalid or missing IP: %q", nmapToolArgs.IP)
 	}
 
-	// Парсинг результатов Nmap
-	ports := parseNmapPorts(string(output))
-	msfQueries := generateMsfQueries(ports)
+	var args []string
+	if len(nmapToolArgs.Args) > 0 {
+		args = append([]string{}, nmapToolArgs.Args...)
+		ipPresent := false
+		for _, a := range args {
+			if a == nmapToolArgs.IP {
+				ipPresent = true
+				break
+			}
+		}
+		if !ipPresent {
+			args = append(args, nmapToolArgs.IP)
+		}
+	} else {
+		args = []string{
+			"-v",
+			"-T4",
+			"-PA",
+			"-sV",
+			"--version-all",
+			"--osscan-guess",
+			"-A",
+			"-sS",
+			"-p", "1-65535",
+			nmapToolArgs.IP,
+		}
+	}
 
-	// Формирование ответа для LangChainGo
-	response := fmt.Sprintf("Generated Metasploit queries: %v", msfQueries)
+	cmd := exec.Command("nmap", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to execute nmap: %w - output: %s", err, string(output))
+	}
+
+	ports := parseNmapPorts(string(output))
+	msfQueries := GenerateMsfQueries(ports)
+
+	response := fmt.Sprintf("Used args: %v\n\nGenerated Metasploit queries: %v", args, msfQueries)
 	return response, nil
 }
 
 func parseNmapPorts(nmapOutput string) []PortInfo {
 	var ports []PortInfo
-	re := regexp.MustCompile(`(\d+)\/tcp\s+(\w+)\s+(.+?)\s*`)
+	re := regexp.MustCompile(`(\d+)\/tcp\s+(\w+)\s+(.+?)\s*(?:\n|$)`)
 	matches := re.FindAllStringSubmatch(nmapOutput, -1)
 
 	for _, match := range matches {
@@ -78,18 +116,6 @@ func parseNmapPorts(nmapOutput string) []PortInfo {
 	}
 
 	return ports
-}
-
-func generateMsfQueries(ports []PortInfo) []string {
-	var queries []string
-	for _, port := range ports {
-		if strings.ToLower(port.State) == "open" {
-			queries = append(queries, fmt.Sprintf("type:exploit name:%s", port.Service))
-			queries = append(queries, fmt.Sprintf("port %s", port.Port))
-		}
-	}
-
-	return queries
 }
 
 func init() {
