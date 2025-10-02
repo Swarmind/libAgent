@@ -13,6 +13,9 @@ FROM kalilinux/kali-rolling
 # Устанавливаем зависимости (если нужно)
 RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y git curl wget metasploit-framework
+RUN apt-get install nmap -y
+#RUN snap install nmap -y
+#RUN snap connect nmap:network-control
 
 # Копируем исполняемый файл из этапа сборки
 COPY --from=builder /app/agent /app/agent

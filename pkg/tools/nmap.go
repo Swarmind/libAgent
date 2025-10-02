@@ -26,7 +26,8 @@ var NmapToolDefinition = llms.FunctionDefinition{
 			},
 			"args": map[string]any{
 				"type":        "array",
-				"description": "Optional array of nmap arguments (e.g. [\"-sV\",\"-p\",\"1-100\"]). If omitted, defaults are used. Defaults are: [\"-v\",\"-T3\",\"-sT\",\"-sV\",\"-Pn\",\"--version-all\",\"--top-ports\", \"100\",]",
+				"description": "Optional array of nmap arguments (e.g. [\"-sV\",\"-p\",\"1-100\"]). If you call it with '-p' argument then do not forget to specify porst diapason after this argument like `-p 1-100`. If omitted, defaults are used. ",
+				//Defaults are: [\"-v\",\"-T3\",\"-sT\",\"-sV\",\"-Pn\",\"--version-all\",\"--top-ports\", \"100\",]
 				"items": map[string]any{
 					"type": "string",
 				},
@@ -107,14 +108,16 @@ func ParseNmapPorts(nmapOutput string) []PortInfo {
 
 	for _, match := range matches {
 		if len(match) >= 4 {
+
 			ports = append(ports, PortInfo{
 				Port:    match[1],
 				State:   strings.TrimSpace(match[2]),
 				Service: strings.TrimSpace(match[3]),
 			})
+			fmt.Println("found port:", match[1], "found state:", ports[len(ports)-1].State, "found service", ports[len(ports)-1].Service)
 		}
 	}
-
+	fmt.Println("found ports:", ports)
 	return ports
 }
 
