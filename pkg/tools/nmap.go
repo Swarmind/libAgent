@@ -26,7 +26,7 @@ var NmapToolDefinition = llms.FunctionDefinition{
 			},
 			"args": map[string]any{
 				"type":        "array",
-				"description": "Optional array of nmap arguments (e.g. [\"-sV\",\"-p\",\"1-1000\"]). If omitted, defaults are used.",
+				"description": "Optional array of nmap arguments (e.g. [\"-sV\",\"-p\",\"1-100\"]). If omitted, defaults are used. Defaults are: [\"-v\",\"-T3\",\"-sT\",\"-sV\",\"-Pn\",\"--version-all\",\"--top-ports\", \"100\",]",
 				"items": map[string]any{
 					"type": "string",
 				},
@@ -75,14 +75,12 @@ func (s NmapTool) Call(ctx context.Context, input string) (string, error) {
 	} else {
 		args = []string{
 			"-v",
-			"-T4",
-			"-PA",
+			"-T3",
+			"-sT",
 			"-sV",
+			"-Pn",
 			"--version-all",
-			"--osscan-guess",
-			"-A",
-			"-sS",
-			"-p", "1-65535",
+			"--top-ports", "100",
 			nmapToolArgs.IP,
 		}
 	}
@@ -93,7 +91,7 @@ func (s NmapTool) Call(ctx context.Context, input string) (string, error) {
 		return "", fmt.Errorf("failed to execute nmap: %w - output: %s", err, string(output))
 	}
 
-	ports := parseNmapPorts(string(output))
+	ports := ParseNmapPorts(string(output))
 
 	//TODO: should be in another pkg
 	msfQueries := GenerateMsfQueries(ports)
@@ -102,7 +100,7 @@ func (s NmapTool) Call(ctx context.Context, input string) (string, error) {
 	return response, nil
 }
 
-func parseNmapPorts(nmapOutput string) []PortInfo {
+func ParseNmapPorts(nmapOutput string) []PortInfo {
 	var ports []PortInfo
 	re := regexp.MustCompile(`(\d+)\/tcp\s+(\w+)\s+(.+?)\s*(?:\n|$)`)
 	matches := re.FindAllStringSubmatch(nmapOutput, -1)
