@@ -26,7 +26,7 @@ var NmapToolDefinition = llms.FunctionDefinition{
 			},
 			"args": map[string]any{
 				"type":        "array",
-				"description": "Optional array of nmap arguments (e.g. [\"-sV\",\"-p\",\"1-1000\"]). If omitted, defaults are used.",
+				"description": "Optional array of nmap arguments (e.g. [\"-sV\",\"-p\",\"1-100\"]). If omitted, defaults are used. Defaults are: [\"-v\",\"-T3\",\"-sT\",\"-sV\",\"-Pn\",\"--version-all\",\"--top-ports\", \"100\",]",
 				"items": map[string]any{
 					"type": "string",
 				},
@@ -80,7 +80,7 @@ func (s NmapTool) Call(ctx context.Context, input string) (string, error) {
 			"-sV",
 			"-Pn",
 			"--version-all",
-			"--top-ports", "1000",
+			"--top-ports", "100",
 			nmapToolArgs.IP,
 		}
 	}
