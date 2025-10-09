@@ -1,1 +1,34 @@
-"# webreader\n\ninternal/tools/webReader/webReader.go\n\n\"Package: webreader\\n\\nImports:\\n\\\"fmt\\\"\\n\\\"io\\\"\\n\\\"net/http\\\"\\n\\\"strings\\\"\\n\\\"time\\\"\\n\\\"github.com/JohannesKaufmann/html-to-markdown/v2\\\"\\n\\\"github.com/JohannesKaufmann/html-to-markdown/v2/converter\\\"\\n\\\"github.com/PuerkitoBio/goquery\\\"\\n\\\"github.com/go-rod/rod\\\"\\n\\\"github.com/go-rod/rod/lib/proto\\\"\\n\\nExternal data, input sources:\\nThe code uses external data from the provided URL to process and convert it into Markdown format.\\n\\nTODOs:\\nThere are no TODO comments in the code.\\n\\nSummary:\\nThe webreader package provides a function to process a given URL and convert its content into Markdown format. It first checks if the page requires JavaScript to be executed. If it does, it uses a headless browser to load the page and extract the HTML content. Otherwise, it directly fetches the HTML content from the URL. Finally, it uses the html-to-markdown library to convert the HTML content into Markdown format.\\n\\nThe ProcessUrl function takes a URL as input and returns the Markdown content of the page, along with any errors encountered during the process.\\n\\nThe loadJSPage function is responsible for loading a page that requires JavaScript execution. It uses a headless browser to load the page and extract the HTML content.\\n\\nThe checkNoScript function checks if a given URL requires JavaScript execution by looking for the presence of the \\\"noscript\\\" tag in the HTML content.\\n\\nThe code also includes error handling and resource cleanup to ensure proper functioning and resource management.\"\n\nThe webreader package provides a function to process a given URL and convert its content into Markdown format. It first checks if the page requires JavaScript to be executed. If it does, it uses a headless browser to load the page and extract the HTML content. Otherwise, it directly fetches the HTML content from the URL. Finally, it uses the html-to-markdown library to convert the HTML content into Markdown format.\n\nThe ProcessUrl function takes a URL as input and returns the Markdown content of the page, along with any errors encountered during the process.\n\nThe loadJSPage function is responsible for loading a page that requires JavaScript execution. It uses a headless browser to load the page and extract the HTML content.\n\nThe checkNoScript function checks if a given URL requires JavaScript execution by looking for the presence of the \"noscript\" tag in the HTML content.\n\nThe code also includes error handling and resource cleanup to ensure proper functioning and resource management."
+## webreader Package Summary
+
+**Package Name:** `webreader`
+
+This package fetches content from URLs, optionally rendering JavaScript-heavy pages using a headless browser (Rod), and converts the HTML to Markdown format using `html-to-markdown`. It's designed for extracting readable text from webpages.
+
+**Configuration/Arguments:**
+
+*   The primary input is a URL string (`u`) passed to `ProcessUrl`.
+*   JavaScript rendering is determined dynamically by checking for `<noscript>` tags containing "javascript" in the HTML source using `checkNoScript`. If present, Rod (headless browser) is used. Otherwise, standard HTTP GET requests are made.
+
+**File Structure:**
+
+```
+internal/tools/webReader/
+├── webReader.go
+```
+
+**Key Functions:**
+
+*   `ProcessUrl(u string)`: Main function to fetch and convert a URL to Markdown. Handles both static HTML and JavaScript-rendered pages.
+*   `loadJSPage(u string)`: Launches Rod, navigates to the URL, waits for rendering, and extracts the final HTML content.  Error handling is included for browser connection, page loading, and DOM stabilization.
+*   `checkNoScript(url string)`: Determines if JavaScript rendering is needed by parsing the initial HTML source for `<noscript>` tags containing "javascript".
+
+**Dependencies:**
+
+*   `github.com/JohannesKaufmann/html-to-markdown/v2`: For converting HTML to Markdown.
+*   `github.com/PuerkitoBio/goquery`: For parsing HTML (used in `checkNoScript`).
+*   `github.com/go-rod/rod`: For headless browser automation (JavaScript rendering).
+
+**Edge Cases:**
+
+*   If Rod fails to launch or connect, the function will return an error.  The code includes basic error handling but may not cover all possible failure scenarios with `Rod`.
+*   Pages that dynamically load content *after* initial DOM stabilization might not be fully rendered by Rod if the wait time is insufficient.
