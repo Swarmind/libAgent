@@ -17,7 +17,7 @@ import (
 	This example shows usage of command executor with rewoo tool, which are whitelisted.
 */
 
-const Prompt = `Please scan 172.86.95.138  for open ports and generate Metasploit search queries for any found services.`
+const Prompt = `Please scan 172.18.0.2 for open ports and generate Metasploit search queries for any found services. After that try to exploit target, using 172.18.0.3 as LHOST and target address as RHOST.`
 
 type NmapToolArgs struct {
 	IP string `json:"ip"`
@@ -39,6 +39,7 @@ func main() {
 		tools.CommandExecutorDefinition.Name,
 		tools.NmapToolDefinition.Name,
 		tools.MsfSearchToolDefinition.Name,
+		tools.ExploitToolDefinition.Name, // WARN! THIS WILL RUN THE ACTUAL EXPLOIT, THIS IS DANGEROUSE ZONE! USE IT ONLY WHEN READY!
 	))
 	if err != nil {
 		log.Fatal().Err(err).Msg("new tools executor")

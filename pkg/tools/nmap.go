@@ -114,7 +114,7 @@ func ParseNmapPorts(nmapOutput string) []PortInfo {
 				State:   strings.TrimSpace(match[2]),
 				Service: strings.TrimSpace(match[3]),
 			})
-			fmt.Println("found port:", match[1], "found state:", ports[len(ports)-1].State, "found service", ports[len(ports)-1].Service)
+			fmt.Println("found port:", match[1], "found state:", ports[len(ports)-1].State, "found service:", ports[len(ports)-1].Service)
 		}
 	}
 	fmt.Println("found ports:", ports)
