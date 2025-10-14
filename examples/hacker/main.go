@@ -17,7 +17,8 @@ import (
 	This example shows usage of command executor with rewoo tool, which are whitelisted.
 */
 
-const Prompt = `Please scan 172.18.0.2 for open ports and generate Metasploit search queries for any found services. After that try to exploit target, using 172.18.0.3 as LHOST and target address as RHOST.`
+
+const Prompt = `Please scan 172.18.0.2 for open ports and generate Metasploit search queries for any found services. After that try to continiously exploit target, using 172.18.0.3 as LHOST and target address as RHOST and module(s) found from metasploit search`
 
 type NmapToolArgs struct {
 	IP string `json:"ip"`
