@@ -86,7 +86,7 @@ Task:
 Wrong solved plan:
 %s
 
-Generate a fixed plan, fixing the possible errors of the wrong solved plan above
+Generate a fixed plan, fixing the possible errors of the wrong solved plan above. If there are errors in tool calls (other then command executor), then try to fix plan by calling command executor directly instead of using other specific tools.
 `
 
 const PromptLLMTool = `Do not include any introductory phrases or explanations.

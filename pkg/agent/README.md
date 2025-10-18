@@ -1,1 +1,19 @@
-"# agent\n\npkg/agent/agent.go\ngeneric/agent.go\nsimple/agent.go\nagent.go\n\nThe agent package defines an Agent interface that represents an agent capable of interacting with a large language model. The interface includes two methods: Run and SimpleRun. The Run method takes a context, a list of messages, and optional call options as input and returns a message and an error. The SimpleRun method takes a context, an input string, and optional call options as input and returns a string and an error.\n\nThe package also includes implementations of the Agent interface in the generic and simple subpackages. The generic subpackage provides a generic implementation of the Agent interface, while the simple subpackage provides a simple implementation of the Agent interface.\n\nThe agent.go file contains the main function for the agent package. The main function creates an instance of the Agent interface and uses it to interact with a large language model.\n\nThe package interacts with the llms package, which likely provides access to large language models."
+## Agent Package Summary
+
+**Package Name:** `agent`
+
+This package defines an interface (`Agent`) for interacting with Large Language Models (LLMs) through methods like `Run` and `SimpleRun`. The core functionality revolves around processing input messages or strings using LLM calls, potentially with configurable options.  The design allows for different agent implementations to handle specific tasks while adhering to a common interaction pattern.
+
+**File Structure:**
+
+*   `agent.go`: Defines the `Agent` interface.
+*   `generic/agent.go`: (Implied) Likely contains generic agent implementations.
+*   `simple/agent.go`: (Implied) Likely contains simplified or specialized agent implementations.
+
+**Configuration / Arguments:**
+
+The primary configuration comes through the optional LLM call options (`opts ...llms.CallOption`) passed to `Run` and `SimpleRun`. These options control how the underlying LLM behaves during execution.  Context cancellation via `context.Context` is also supported for controlling agent runtime.
+
+**Edge Cases:**
+
+The interface doesn't specify error handling beyond returning an `error` value, so implementations must handle potential failures gracefully (e.g., LLM API errors). The behavior with invalid or unexpected input isn't defined and depends on the specific implementation of the `Agent`.
