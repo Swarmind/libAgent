@@ -17,8 +17,7 @@ import (
 	This example shows usage of command executor with rewoo tool, which are whitelisted.
 */
 
-
-const Prompt = `Please scan 172.18.0.2 for open ports and generate Metasploit search queries for any found services. After that try to continiously exploit target, using 172.18.0.3 as LHOST and target address as RHOST and module(s) found from metasploit search`
+const Prompt = `Please scan %s for open ports and generate Metasploit search queries for any found services. After that try to continiously exploit target, using %s as LHOST and target address as RHOST and module(s) found from metasploit search`
 
 type NmapToolArgs struct {
 	IP string `json:"ip"`
@@ -51,8 +50,21 @@ func main() {
 		}
 	}()
 
+	rhost, exists := os.LookupEnv("HACKER_MSF_RHOST")
+	if !exists {
+		log.Fatal().Msg("HACKER_MSF_RHOST env cannot be empty")
+	}
+	lhost, exists := os.LookupEnv("HACKER_MSF_LHOST")
+	if !exists {
+		log.Fatal().Msg("HACKER_MSF_LHOST env cannot be empty")
+	}
+
+	fmt.Println(rhost, lhost)
+
+	return
+
 	rewooQuery := tools.ReWOOToolArgs{
-		Query: Prompt,
+		Query: fmt.Sprintf(Prompt, rhost, lhost),
 	}
 	rewooQueryBytes, err := json.Marshal(rewooQuery)
 	if err != nil {
