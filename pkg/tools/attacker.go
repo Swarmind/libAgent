@@ -25,7 +25,7 @@ var ExploitToolDefinition = llms.FunctionDefinition{
 			},
 			"options": map[string]any{
 				"type":        "object",
-				"description": "Key-value pairs for Metasploit options (e.g., {'RHOSTS': '192.168.1.10', 'LHOST': '192.168.1.5'}).",
+				"description": "Key-value pairs for Metasploit options (e.g., {'RHOSTS': '192.168.1.10', 'LHOST': '192.168.1.5', 'payload': 'cmd/unix/reverse'}).",
 			},
 		},
 	},
