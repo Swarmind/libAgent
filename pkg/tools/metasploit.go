@@ -98,7 +98,7 @@ func (s MsfSearchTool) Call(ctx context.Context, input string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to execute %s %v: %w\noutput: %s", execName, args, err, string(output))
 		}
-		fmt.Println("executed metasploit query:", query)
+		fmt.Println("executed metasploit search query:", query)
 		results = append(results, map[string]string{
 			"query":  query,
 			"output": string(output),

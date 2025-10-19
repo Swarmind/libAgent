@@ -55,6 +55,8 @@ func (s *ExploitTool) Call(ctx context.Context, input string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to execute msfconsole: %w - output: %s", err, string(output))
 	}
+	fmt.Println("executed metasploit exploit query:", input)
+	fmt.Println("result:", output)
 
 	return string(output), nil
 }
