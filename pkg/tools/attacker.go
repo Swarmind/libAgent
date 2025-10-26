@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"os/exec"
 
-	//"strings"
-
 	"github.com/Swarmind/libagent/internal/tools"
 	"github.com/Swarmind/libagent/pkg/config"
 	"github.com/tmc/langchaingo/llms"
@@ -21,7 +19,7 @@ var ExploitToolDefinition = llms.FunctionDefinition{
 		"properties": map[string]any{
 			"module": map[string]any{
 				"type":        "string",
-				"description": "Metasploit exploit module to use (e.g., 'exploit/multi/handler').",
+				"description": "Metasploit exploit module to use (e.g., 'exploit/module_name').",
 			},
 			"options": map[string]any{
 				"type":        "object",
@@ -44,21 +42,30 @@ func (s *ExploitTool) Call(ctx context.Context, input string) (string, error) {
 		return "", fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
 
-	cmd := []string{"msfconsole"}
+	// Execute 'use cmd/unix/reverse' before running the exploit
+	cmdUse := []string{"msfconsole"}
+	cmdUse = append(cmdUse, "use", "cmd/unix/reverse")
+	outputUse, errUse := exec.Command("msfconsole", cmdUse...).CombinedOutput()
+	if errUse != nil {
+		return "", fmt.Errorf("failed to execute 'use cmd/unix/reverse': %w - output: %s", errUse, string(outputUse))
+	}
+
+	cmdExploit := []string{"msfconsole"}
 	for key, value := range exploitArgs.Options {
-		cmd = append(cmd, "-o", key+"="+value)
+		cmdExploit = append(cmdExploit, "-o", key+"="+value)
 	}
-	cmd = append(cmd, "use", exploitArgs.Module)
-	cmd = append(cmd, "run")
+	cmdExploit = append(cmdExploit, "use", exploitArgs.Module)
+	cmdExploit = append(cmdExploit, "run")
 
-	output, err := exec.Command("msfconsole", cmd...).CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("failed to execute msfconsole: %w - output: %s", err, string(output))
+	outputExploit, errExploit := exec.Command("msfconsole", cmdExploit...).CombinedOutput()
+	if errExploit != nil {
+		return "", fmt.Errorf("failed to execute msfconsole: %w - output: %s", errExploit, string(outputExploit))
 	}
+
 	fmt.Println("executed metasploit exploit query:", input)
-	fmt.Println("result:", output)
+	fmt.Println("result:", outputExploit)
 
-	return string(output), nil
+	return string(outputExploit), nil
 }
 
 func init() {
