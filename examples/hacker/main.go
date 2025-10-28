@@ -17,12 +17,7 @@ import (
 	This example shows usage of command executor with rewoo tool, which are whitelisted.
 */
 
-const Prompt = ` - Generate a reverse shell payload in Go for Linux. The payload should connect to %s on port 4444 and execute commands from the attacker. Include error handling and basic obfuscation techniques.
-					- Create a file main.go and save result from first step
-					- Print the code of main.go that have been generated
-					- Try to build a binary (go build)
-					- Return me path of the created binary
-				 - Then please scan %s for open ports and generate Metasploit search queries for any found services. Firstly try to use nmap with only -F argument. After that try to continiously exploit target, using %s as LHOST and target address as RHOST and module(s) found from metasploit search. Use cmd/unix/reverse as payload.'`
+const Prompt = ` Please scan %s for open ports and generate Metasploit search queries for any found services. Firstly try to use nmap with only -F argument. After that try to continiously exploit target, using %s as LHOST and target address as RHOST and module(s) found from metasploit search. Use cmd/unix/reverse as payload.'`
 
 type NmapToolArgs struct {
 	IP string `json:"ip"`
@@ -30,6 +25,7 @@ type NmapToolArgs struct {
 
 func main() {
 	//func Act() {
+
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
