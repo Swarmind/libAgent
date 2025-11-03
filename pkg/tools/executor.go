@@ -18,6 +18,7 @@ import (
 )
 
 const CommandNotesPromptAddition = `Important! List of host machine specific command usage recommendations:`
+const sendChunkSize = 512
 
 var CommandExecutorDefinition = llms.FunctionDefinition{
 	Name: "commandExecutor",
@@ -74,7 +75,9 @@ func (s *CommandExecutorTool) RunCommand(input string) (string, error) {
 		// Expect default bash shell prompt end
 		s.process.Expect("$")
 
-		s.process.Send(fmt.Sprintf("PATH=%s\n", os.Getenv("PATH")))
+		s.process.Send(fmt.Sprintf("export PATH=%s\n", os.Getenv("PATH")))
+		s.process.Send(fmt.Sprintf("export HOME=%s\n", os.Getenv("HOME")))
+		s.process.Send(fmt.Sprintf("export GOCACHE=%s\n", os.Getenv("GOCACHE")))
 		// Create a random UUID to set as a prompt to be sure that there are command end
 		s.prompt = uuid.New().String()
 		s.process.Send(fmt.Sprintf("PS1=%s\n", s.prompt))
@@ -82,31 +85,30 @@ func (s *CommandExecutorTool) RunCommand(input string) (string, error) {
 		s.process.Expect(fmt.Sprintf("PS1=%s", s.prompt))
 		// Expect changed prompt
 		s.process.Expect(s.prompt)
+		// Send raw mode
+		s.process.Send("stty raw\n")
+		s.process.Expect(s.prompt)
 		// Discard output by draining output buffer
 		s.process.Collect()
 	}
 
 	// Trim trailing '\' to avoid escaping last '\n' symbol
-	command := strings.TrimSuffix(
-		strings.ReplaceAll(
-			// Replace '\"' with '"' to avoid double escaping, since the command is from json payload
-			strings.TrimSpace(input),
-			`\"`, `"`,
-		), `\`,
-	) + "\n"
+	command := strings.TrimSuffix(input, `\`) + "\n"
 	log.Debug().Msgf("command executor: %s", strings.TrimSpace(command))
+
 	s.process.Capture()
-	s.process.Send(command)
-	err := s.process.ExpectTimeout(s.prompt, time.Second*30)
+
+	err := s.process.Send(command)
+	if err != nil {
+		log.Debug().Err(err).Msgf("send command")
+	}
+
+	err = s.process.ExpectTimeout(s.prompt, time.Second*30)
 	if err != nil {
 		s.process.Send(string([]byte{0x03}))
 	}
 
-	output := string(s.process.Collect())
-	// Collected output will include prompt and entered command line
-	// Strip the first line and trim prompt suffix (since output command can be terminated without newline)
-	outputLines := strings.Split(strings.TrimSpace(output), "\n")[1:]
-	output = strings.TrimSpace(strings.TrimSuffix(strings.Join(outputLines, "\n"), s.prompt))
+	output := strings.TrimSpace(strings.ReplaceAll(string(s.process.Collect()), s.prompt, ""))
 
 	log.Debug().Msgf("command output: %s", output)
 

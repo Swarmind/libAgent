@@ -49,3 +49,5 @@ require (
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 )
+
+replace github.com/kr/pty v1.1.1 => github.com/creack/pty v1.1.24

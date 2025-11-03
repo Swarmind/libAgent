@@ -22,7 +22,7 @@ const (
 	GraphPlanName   = "plan"
 	GraphToolName   = "tool"
 	GraphSolveName  = "solve"
-	ObserveAttempts = 0
+	ObserveAttempts = 2
 )
 
 const PromptGetPlan = `For the following task, make plans that can solve the problem step by step. For each plan, indicate
@@ -264,7 +264,7 @@ func (r ReWOO) ToolExecution(ctx context.Context, s interface{}) (interface{}, e
 					Command string `json:"command"`
 				}
 				commandExecutorQuery := CommandExecutorArgs{
-					Command: "pwd && ls",
+					Command: "pwd && ls -l",
 				}
 				commandExecutorQueryBytes, _ := json.Marshal(commandExecutorQuery)
 
