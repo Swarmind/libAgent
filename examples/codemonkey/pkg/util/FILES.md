@@ -1,24 +1,37 @@
 # examples/codemonkey/pkg/util/utils.go  
-## Package: `utility`  
+**Package / Component Name**    
+`utility`  
   
-This package provides utility functions, specifically for retrieving environment variables with error handling.  
+---  
   
-**Imports:**  
+### Imports  
+| Package | Purpose |  
+|---------|---------|  
+| `os` | Provides access to environment variables via `os.Getenv`. |  
+| `github.com/rs/zerolog/log` | Enables structured logging; used for fatal error reporting. |  
   
-*   `os`: For accessing environment variables.  
-*   `github.com/rs/zerolog/log`: For logging fatal errors if an environment variable is missing.  
+---  
   
-**External Data / Input Sources:**  
+### External Data / Input Sources  
+* The function expects a key name (`key string`) that identifies an environment variable.  
+* It reads the value of this variable using `os.Getenv`.  
+* If the retrieved value is empty, it logs a fatal message indicating the missing key.  
   
-The primary input to this package is the operating system's environment variables, accessed via `os.Getenv()`.  It relies on these being properly set before execution.  
+---  
   
-**Function Summary:**  
+### TODOs  
+No explicit TODO comments are present in the file.  
   
-### `GetEnv(key string) string`  
+---  
   
-This function retrieves the value of an environment variable specified by the `key`. If the environment variable is not set (empty string), it logs a fatal error message using `zerolog` and terminates the program. Otherwise, it returns the retrieved value as a string. This ensures that critical configuration values are present before proceeding.  
+## Summary of Major Code Parts  
   
-**TODOs:**  
+### Function `GetEnv`  
+- **Signature**: `func GetEnv(key string) string`  
+- **Behavior**:  
+  - Calls `os.Getenv` to fetch the value associated with the supplied key.  
+  - Checks if the returned value is empty; if so, logs a fatal message using `log.Fatal().Msgf`.  
+  - Returns the fetched value for further use by callers.  
   
-There are no TODO comments in this code snippet.  
+This single function encapsulates environment variable retrieval and basic error handling, making it a convenient helper within the `utility` package.  
   

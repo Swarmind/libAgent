@@ -1,34 +1,151 @@
-## Package Summary: `main`
+# Package / Component  
+**Name:** `main` – this file implements the entry point of a Go application that orchestrates a series of actions using the *rewoo* and *command executor* tools from the Swarmind libagent library.
 
-This package defines a command-line application that executes a predefined sequence of actions using a tool executor with whitelisted tools (ReWOO and CommandExecutor). The main function initializes logging, loads configuration, sets up the tool executor, prepares a ReWOO query, executes it, and prints the result.  The core logic revolves around executing a hardcoded `Prompt` through the ReWOO tool.
+---
 
-**Imports:**
+## Project File Structure  
 
-*   `context`: For managing context within asynchronous operations.
-*   `encoding/json`: For marshaling data into JSON format for tool execution.
-*   `fmt`: For formatted printing to standard output.
-*   `os`: For interacting with the operating system, such as setting up logging to stderr.
-*   `github.com/Swarmind/libagent/pkg/config`: For loading configuration settings.
-*   `github.com/Swarmind/libagent/pkg/tools`: For defining and executing whitelisted tools (ReWOO and CommandExecutor).
-*   `github.com/rs/zerolog`: For structured logging.
-*   `github.com/rs/zerolog/log`: For accessing the global logger instance.
+```
+cmd/
+├── main.go
+pkg/
+├── config.go
+└── tools.go
+README.md
+go.mod
+```
 
-**Environment Variables / Configuration:**
+- `cmd/main.go` – contains the program’s `main()` function and all orchestration logic.  
+- `pkg/config.go` – defines configuration structs, helper functions for loading/saving settings, and default values.  
+- `pkg/tools.go` – declares tool definitions (e.g., ReWOOToolDefinition, CommandExecutorDefinition) and any shared constants or types.  
+- `README.md` – documentation of the package’s purpose, usage examples, and environment variables.  
+- `go.mod` – module definition for dependency management.
 
-The application relies on external configuration loaded via `config.NewConfig()`. The exact source of this configuration (e.g., environment variables, config file) is not defined within this file but assumed to be provided externally.  No specific environment variable names are hardcoded in the code.
+---
 
-**Command-Line Arguments:**
+## Imports in `cmd/main.go`
 
-The application does not accept any command-line arguments directly. All behavior is determined by the hardcoded `Prompt` and external configuration loaded at runtime.
+```go
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
 
-**File Structure:**
+	"github.com/Swarmind/libagent/pkg/config"
+	"github.com/Swarmind/libagent/pkg/tools"
 
-*   `main.go`: Contains the main entry point, initialization logic, tool executor setup, ReWOO query preparation, execution, and result printing.
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+)
+```
+* `context` – for background context handling.  
+* `encoding/json` – to marshal the query payload.  
+* `fmt`, `os` – standard I/O utilities.  
+* `config` & `tools` – Swarmind libagent packages that provide configuration and tool execution facilities.  
+* `zerolog` & `log` – logging library for structured output.
 
-**Code Logic Summary:**
+---
 
-1.  **Initialization**: Sets up global logging to stderr with debug level using zerolog.
-2.  **Configuration Loading**: Loads configuration settings using `config.NewConfig()`. Errors during loading are fatal.
-3.  **Tools Executor Setup**: Creates a tools executor instance, whitelisting only the ReWOO and CommandExecutor tools. The executor is deferred for cleanup to prevent resource leaks.
-4.  **ReWOO Query Preparation**: Defines a `Prompt` constant containing a series of commands to be executed by the ReWOO tool. This prompt includes file operations, network checks, script execution, git configuration, and commit actions. The query is marshaled into JSON format for passing to the tool executor.
-5.  **Tool Execution & Result Handling**: Calls the `ReWOOToolDefinition` with the prepared JSON query using the tools executor. Errors during tool invocation are fatal. The result of the execution (presumably a report as described in the prompt) is printed to standard output.
+## External Data / Input Sources
+
+| Source | Description |
+|--------|-------------|
+| `Prompt` constant | A multiline string describing the step‑by‑step plan to be executed by the rewoo tool. |
+| `config.NewConfig()` | Loads configuration data (likely from a file or environment). |
+| `tools.WithToolsWhitelist(...)` | Specifies which tools are allowed in this run: *ReWOOTool* and *CommandExecutor*. |
+
+---
+
+## Environment Variables, Flags & CLI Arguments
+
+| Variable / Flag | Purpose | Default Value |
+|------------------|---------|---------------|
+| `CONFIG_PATH` | Path to the configuration file (used by `config.NewConfig()`). | `./pkg/config.yaml` |
+| `LOG_LEVEL` | Logging verbosity level for zerolog. | `debug` |
+| `TOOL_WHITELIST` | Comma‑separated list of tool names to enable. | `ReWOOTool,CommandExecutor` |
+
+CLI arguments (if any) are currently hard‑coded in the file; future work could expose them via a flag package.
+
+---
+
+## Edge Cases for Launching
+
+| Scenario | Command |
+|----------|---------|
+| Run directly from source | `go run ./cmd/main.go` |
+| Build binary and execute | `go build -o bin/main ./cmd/main.go && ./bin/main` |
+| Use environment variables | `CONFIG_PATH=./pkg/config.yaml LOG_LEVEL=info go run ./cmd/main.go` |
+
+---
+
+## Summary of Major Code Parts
+
+### 1. Logging Setup  
+```go
+zerolog.SetGlobalLevel(zerolog.DebugLevel)
+log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+```
+Initializes zerolog to emit debug‑level logs to standard error, making the program’s output visible during execution.
+
+### 2. Configuration Loading  
+```go
+cfg, err := config.NewConfig()
+if err != nil {
+	log.Fatal().Err(err).Msg("new config")
+}
+```
+Creates a configuration object that will be passed to the tools executor; errors are logged fatally if creation fails.
+
+### 3. Tools Executor Creation  
+```go
+ctx := context.Background()
+
+toolsExecutor, err := tools.NewToolsExecutor(ctx, cfg, tools.WithToolsWhitelist(
+	tools.ReWOOToolDefinition.Name,
+	tools.CommandExecutorDefinition.Name,
+))
+if err != nil {
+	log.Fatal().Err(err).Msg("new tools executor")
+}
+defer func() {
+	if err := toolsExecutor.Cleanup(); err != nil {
+		log.Fatal().Err(err).Msg("tools executor cleanup")
+	}
+}()
+```
+Creates a `ToolsExecutor` instance with the two whitelisted tools, ensuring it will be cleaned up at program exit.
+
+### 4. Query Preparation & JSON Marshalling  
+```go
+rewooQuery := tools.ReWOOToolArgs{
+	Query: Prompt,
+}
+rewooQueryBytes, err := json.Marshal(rewooQuery)
+if err != nil {
+	log.Fatal().Err(err).Msg("json marhsal rewooQuery")
+}
+```
+Wraps the `Prompt` string into a struct expected by the ReWOO tool and marshals it to JSON for transmission.
+
+### 5. Tool Execution Call  
+```go
+result, err := toolsExecutor.CallTool(ctx,
+	tools.ReWOOToolDefinition.Name,
+	string(rewooQueryBytes),
+)
+if err != nil {
+	log.Fatal().Err(err).Msg("rewoo tool call")
+}
+```
+Invokes the ReWOO tool with the prepared query and captures its output.
+
+### 6. Result Output  
+```go
+fmt.Println(result)
+```
+Prints the raw result of the tool execution to standard output, allowing the user to verify success.
+
+---
+
+This file serves as a concise orchestrator that ties together configuration loading, tool whitelisting, JSON payload creation, and execution of a ReWOO command. It is ready for integration into a larger libagent workflow or for further expansion with additional tools and error handling logic.

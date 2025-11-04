@@ -1,47 +1,88 @@
 # examples/generic/main.go  
-## Package Summary: `main`  
+# Package / Component    
+**Name:** `main` (root package of a Go executable)    
   
-This package demonstrates the initialization and usage of a generic tools-enabled agent using the `libagent` library. It leverages OpenAI's LLM for processing prompts and executes predefined tools to achieve a specific task (finding Telegram library documentation).  
+## Imports  
+| Import | Purpose |  
+|--------|---------|  
+| `context` | Provides the background context for agent execution |  
+| `fmt` | Used to print the final result |  
+| `os` | Accesses OS-level functions, e.g. stderr output |  
+| `github.com/Swarmind/libagent/pkg/agent/generic` | Generic agent implementation |  
+| `github.com/Swarmind/libagent/pkg/config` | Configuration handling (AI URL, token, model, etc.) |  
+| `github.com/Swarmind/libagent/pkg/tools` | Tool executor and tool definitions |  
+| `github.com/rs/zerolog` | Logging library |  
+| `github.com/rs/zerolog/log` | Logger instance |  
+| `github.com/tmc/langchaingo/llms/openai` | OpenAI LLM client |  
   
-**Imports:**  
+## External Data / Input Sources  
+* **Configuration** – loaded via `config.NewConfig()`.    
+  * Reads AI URL, token, model and default call options from a config file or environment.    
+* **OpenAI API** – accessed through the client created by `openai.New(...)`.    
+* **Tools** – four tool definitions are whitelisted: ReWOOTool, SemanticSearch, DDGSearch, WebReader.    
   
-*   `context`: For managing request contexts.  
-*   `fmt`: For formatted printing.  
-*   `os`: For interacting with the operating system, specifically standard error output.  
-*   `github.com/Swarmind/libagent/pkg/agent/generic`: Core agent functionality.  
-*   `github.com/Swarmind/libagent/pkg/config`: Configuration loading and handling.  
-*   `github.com/Swarmind/libagent/pkg/tools`: Tool definitions and execution.  
-*   `github.com/rs/zerolog`, `github.com/rs/zerolog/log`: Structured logging.  
-*   `github.com/tmc/langchaingo/llms/openai`: OpenAI LLM integration.  
+## TODOs  
+No explicit `TODO:` comments were found in this file.  
   
-**External Data / Input Sources:**  
+---  
   
-*   Configuration loaded from environment variables or a configuration file (using `config.NewConfig()`).  Specifically, the following config values are used:  
-    *   `AIURL`: Base URL for the OpenAI API.  
-    *   `AIToken`: Authentication token for the OpenAI API.  
-    *   `Model`: The name of the OpenAI model to use (e.g., "gpt-3.5-turbo").  
-    *   `DefaultCallOptions`: Default options passed to LLM calls.  
+# Summary of Major Code Parts  
   
-**Tools Used:**  
+### Prompt Definition  
+```go  
+const Prompt = `Please use rewoo tool with the next prompt:  
+Using semantic search tool, which can search across various code from the project  
+collections find out the telegram library name in the code file contents for the project called "Hellper".  
+Extract it from the given code and use a web search to find the pkg.go.dev documentation for it.  
+Give me the URL for it.`  
+```  
+* A single string constant that will be fed into the agent’s LLM.  
   
-The code utilizes a predefined set of tools:  
+### `main()` – Program Entry Point  
+1. **Logging Setup**    
+   * Sets global log level to debug and configures the logger to write to stderr via a console writer.  
   
-*   `ReWOOToolDefinition`:  (Purpose unspecified in the provided snippet, likely related to rewriting or processing text).  
-*   `SemanticSearchDefinition`: For searching across project collections (code files) for specific information.  
-*   `DDGSearchDefinition`: DuckDuckGo search tool.  
-*   `WebReaderDefinition`: Tool for reading content from web pages.  
+2. **Configuration Load**    
+   ```go  
+   cfg, err := config.NewConfig()  
+   ```  
+   * Reads configuration values (AI URL, token, model, etc.) into `cfg`.  
   
-**TODOs:**  
+3. **Context Creation**    
+   ```go  
+   ctx := context.Background()  
+   ```  
   
-There are no explicit `TODO` comments in the provided code snippet.  
+4. **Agent Instantiation**    
+   ```go  
+   agent := generic.Agent{}  
+   ```  
   
-**Major Code Parts Summary:**  
+5. **LLM Client Setup**    
+   * Creates an OpenAI client with base URL, token, model and API version from the config.  
+   * Assigns this LLM to the agent (`agent.LLM = llm`).  
   
-1.  **Initialization & Configuration:** The program initializes logging, loads configuration (including OpenAI API credentials), and sets up a context.  
-2.  **LLM Setup:** An OpenAI LLM instance is created using the loaded configuration parameters. Error handling ensures that if the LLM cannot be initialized, the program exits.  
-3.  **Tools Executor Setup:** A `toolsExecutor` is instantiated with a whitelist of allowed tools (ReWOO, Semantic Search, DDG Search, Web Reader). The executor also includes deferred cleanup logic to release resources.  
-4.  **Agent Execution:** The core functionality involves running the agent with a predefined prompt (`Prompt`). This prompt instructs the agent to use semantic search to find the Telegram library name in project code, then use web search (via DDG) to locate its pkg.go.dev documentation URL.  
-5.  **Output:** The final result of the agent's execution is printed to standard output.  
+6. **Tools Executor Creation**    
+   ```go  
+   toolsExecutor, err := tools.NewToolsExecutor(ctx, cfg, tools.WithToolsWhitelist(  
+       tools.ReWOOToolDefinition.Name,  
+       tools.SemanticSearchDefinition.Name,  
+       tools.DDGSearchDefinition.Name,  
+       tools.WebReaderDefinition.Name,  
+   ))  
+   ```  
+   * Builds a tool executor that knows which tools to use.  
+   * The executor is attached to the agent (`agent.ToolsExecutor = toolsExecutor`).  
+   * A deferred cleanup call ensures resources are released after execution.  
   
-The primary purpose of this file appears to be a demonstration or example of how to integrate and utilize tools within the `libagent` framework, specifically for code-related tasks involving OpenAI LLMs. It showcases a workflow where an LLM orchestrates tool usage based on a given prompt.  
+7. **Agent Run**    
+   ```go  
+   result, err := agent.SimpleRun(ctx,  
+       Prompt, config.ConifgToCallOptions(cfg.DefaultCallOptions)...,  
+   )  
+   ```  
+   * Executes the agent with the prompt and default call options.  
+   * Prints the resulting output to stdout.  
+  
+---  
   

@@ -1,1 +1,86 @@
-"# simple\n\nThis package provides a simple way to interact with an OpenAI LLM and receive responses in a structured format.\n\n## Files\n\n- agent.go\n- pkg/agent/simple/agent.go\n\n## Summary\n\nThe `Agent` struct is designed to interact with a large language model (LLM) provided by OpenAI. It has two main methods: `Run` and `SimpleRun`.\n\nThe `Run` method takes a context, a slice of message content, and optional call options as input. It uses the LLM to generate a response and returns the response content.\n\nThe `SimpleRun` method takes a context, an input string, and optional call options as input. It uses the LLM to generate a response based on the input and returns the response content.\n\nIn both methods, the response content is converted to JSON format before being returned.\n\n## Relations between code entities\n\nThe `Agent` struct in `agent.go` and `pkg/agent/simple/agent.go` are related, as they both interact with the OpenAI LLM. The `Run` and `SimpleRun` methods in both files are designed to work together to provide a comprehensive way to interact with the LLM.\n\n## Edge cases\n\nThe package can be launched by importing the `pkg/agent/simple` package and creating an instance of the `Agent` struct.\n\n\u003cend_of_output\u003e"
+# Package `simple`
+
+The **`pkg/agent/simple`** directory contains a single Go source file that implements an LLM‑powered chat agent.  
+It wraps an OpenAI LLM instance and exposes two convenience methods for generating responses from either a full conversation state or a plain string input.
+
+---
+
+## File structure
+
+```
+pkg/
+└─ agent/
+   └─ simple/
+      └─ agent.go
+```
+
+* `agent.go` – the only file in this package; it defines the public type and its methods.
+
+---
+
+## Imports
+
+```go
+import (
+    "context"
+
+    "github.com/tmc/langchaingo/llms"
+    "github.com/tmc/langchaingo/llms/openai"
+)
+```
+
+* `context` – standard Go context for request handling.  
+* `github.com/tmc/langchaingo/llms` – core LangChain‑Go types (e.g., `MessageContent`, `ChatMessageTypeAI/Human`).  
+* `github.com/tmc/langchaingo/llms/openai` – the OpenAI LLM implementation used by the agent.
+
+---
+
+## Public type
+
+```go
+type Agent struct {
+    LLM *openai.LLM
+}
+```
+
+The agent holds a pointer to an `openai.LLM`.  
+All logic in this package revolves around calling `GenerateContent` on that instance.
+
+---
+
+## Methods
+
+| Method | Signature | Purpose |
+|--------|------------|---------|
+| `Run` | `(ctx context.Context, state []llms.MessageContent, opts ...llms.CallOption) (llms.MessageContent, error)` | Sends the supplied conversation state to the LLM and returns the first choice as an AI chat message. |
+| `SimpleRun` | `(ctx context.Context, input string, opts ...llms.CallOption) (string, error)` | Convenience wrapper that builds a single human‑message from `input`, calls the LLM, and returns the raw output string. |
+
+Both methods call `a.LLM.GenerateContent`.  
+The first method expects an already‑built slice of message contents; the second constructs that slice on the fly.
+
+---
+
+## Environment variables / configuration
+
+* The package itself does not expose any explicit environment variable or flag.  
+  However, the OpenAI LLM instance (`LLM`) can be configured externally (e.g., API key, model name) before creating an `Agent`.
+
+---
+
+## Launch edge cases
+
+If this package is used as a command‑line tool:
+
+1. **As part of a larger binary** – import `"github.com/tmc/langchaingo/pkg/agent/simple"` and create an `Agent` instance in your main program.
+2. **Standalone build** – run `go build ./pkg/agent/simple` to produce a binary that can be invoked with `./simple`.  
+   The binary would need a small wrapper (e.g., a `main.go`) that creates the agent, reads input from stdin or flags, and calls either `Run` or `SimpleRun`.
+
+---
+
+## Summary
+
+* **Purpose** – provide a thin wrapper around an OpenAI LLM to generate chat responses.  
+* **Key entities** – `Agent`, `Run`, `SimpleRun`.  
+* **Data flow** – `Run` → `GenerateContent` → first choice → AI message; `SimpleRun` → build human message → same call → raw string.
+
+The package is intentionally minimal, making it easy to embed in larger LangChain‑Go workflows or to expose as a CLI helper.

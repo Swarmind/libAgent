@@ -1,29 +1,11 @@
-## Config Package Summary
+# Package config
 
-This package manages application configuration through environment variables, `.env` files, and reflection-based field population. It provides a structured way to define settings for AI integrations, search functionality, command execution, and LLM call options. The core logic revolves around the `Config` struct, which is populated from environment variables using tags (`env`) that specify variable names. Wildcard matching (`_*`) allows dynamic loading of map or slice values based on prefixed environment variables.
+The **config** package provides a lightweight, environment‑driven configuration loader for an LLM‑based application.  
+It reads values from a `.env` file (or any other source that `godotenv.Load()` can read) and turns them into a strongly typed struct that can be passed to the rest of the codebase.
 
-**Configuration Sources:**
+---
 
-*   `.env` files (optional): Loaded if present to provide default configuration values.
-*   Environment Variables: Primary source, accessed via `os.Getenv()`. Supports prefixing with `LIBAGENT_ENV_PREFIX`. Wildcard support for map/slice types using the `_*` suffix in env tags.
-
-**Key Structures:**
-
-*   `Config`: Main configuration struct holding AI settings (URL, token, model), search options, tool disabling flags, and command execution configurations (`CommandExecutorCommands`).
-*   `DefaultCallOptions`: Nested structure defining default LLM call parameters (model, max tokens, temperature, etc.).
-
-**Functions:**
-
-*   `NewConfig()`: Initializes a `Config` instance by loading environment variables and populating fields using reflection. Validates essential AI settings (URL, token, model).
-*   `processField()`: Recursive function that iterates through struct fields, extracts the `env` tag, retrieves the corresponding environment variable value, and sets it to the field. Handles nested structs recursively.
-*   `processWildcardField()`: Processes wildcard-tagged fields (`_*`) by extracting all matching environment variables and populating either a map or slice based on the field type.
-*   `setFieldValue()`: Sets the value of a struct field using reflection, handling string, int, bool, float64/32, and slice types with necessary conversions.
-
-**Environment Variables:**
-
-The package relies heavily on environment variables prefixed by `LIBAGENT_ENV_PREFIX` (if defined). Wildcard matching (`_*`) allows loading multiple values into maps or slices based on the prefix. All fields within both `Config` and `DefaultCallOptions` structs are populated from these variables if present. The absence of required AI settings (URL, token, model) will not cause an error but may lead to undefined behavior in dependent components.
-
-**Project Package Structure:**
+## File structure
 
 ```
 pkg/config/
@@ -31,6 +13,81 @@ pkg/config/
 └── config.go
 ```
 
-**Relations between Code Entities:**
+* **calloptions.go** – helper that converts a `DefaultCallOptions` value into a slice of `llms.CallOption`s.
+* **config.go** – main configuration struct, loader logic and helpers for handling nested structs, maps and slices.
 
-The `Config` struct contains a nested `DefaultCallOptions` struct, which is populated independently from environment variables using the same reflection-based mechanism. The `NewConfig()` function orchestrates the entire process by recursively calling `processField()` to populate all fields in both structs. Wildcard processing (`processWildcardField()`) extends this functionality to handle dynamic map/slice configurations.
+---
+
+## Core data structures
+
+| File | Type | Purpose |
+|------|------|---------|
+| `calloptions.go` | `func ConifgToCallOptions(cfg *DefaultCallOptions) []llms.CallOption` | Builds a list of LLM call options from the nested struct. |
+| `config.go` | `type Config struct { … }` | Holds top‑level config values (`AIURL`, `AIToken`, `Model`) and a nested `DefaultCallOptions`. |
+|  | `type DefaultCallOptions struct { … }` | Individual LLM call parameters (model, candidate count, temperature, etc.). |
+
+---
+
+## Environment variables & flags
+
+The loader expects the following keys in the environment (or `.env` file).  
+All names are optional; if a key is missing it will simply be ignored.
+
+| Key | Source | Description |
+|-----|--------|-------------|
+| `AIURL` | top‑level | URL of the LLM endpoint. |
+| `AIToken` | top‑level | API token for authentication. |
+| `Model` | top‑level | Name of the model to use. |
+| `DefaultCallOptions_*` | nested | Each field in `DefaultCallOptions` can be supplied via a key that ends with `_ *`. The loader will match any suffix after the underscore, e.g. `DefaultCallOptions_Model`, `DefaultCallOptions_CandidateCount`, etc. |
+
+The struct tags (`env:"..."`) allow multiple names per field; the loader picks the first one that exists.
+
+---
+
+## How it works
+
+1. **`NewConfig()`** – called by external code to create a fully populated `Config`.  
+   * Loads `.env` via `godotenv.Load()`.  
+   * Iterates over all fields of `Config`, calling `processField` for each.  
+   * Validates that required top‑level values (`AIURL`, `AIToken`, `Model`) are present.
+
+2. **`processField()`** – generic handler for any field in the struct.  
+   * Builds a full key name by concatenating an optional prefix (`EnvPrefixKey`) with the tag value.  
+   * Detects whether the field is a nested struct, map or slice and delegates to `processWildcardField` when the tag ends with `_ *`.  
+   * Calls `setFieldValue()` to actually assign the parsed value.
+
+3. **`processWildcardField()`** – special logic for fields that contain a wildcard (`_*`).  
+   * Uses a regular expression to match all environment keys that start with the prefix and end with any suffix.  
+   * Supports both maps (e.g., `CommandExecutorCommands`) and slices, filling them accordingly.
+
+4. **`setFieldValue()`** – low‑level helper that interprets the kind of the field (`string`, `int`, `bool`, `float64/32`, slice) and assigns the parsed value from the environment variable.  
+   * Handles pointer dereferencing when needed (e.g., for nested structs).  
+
+5. **`ConifgToCallOptions()`** – turns a populated `DefaultCallOptions` into a slice of `llms.CallOption`s that can be passed to an LLM call.  
+   * Checks each field; if it is non‑nil, appends the corresponding `With…` option from the `github.com/tmc/langchaingo/llms` package.
+
+---
+
+## Edge cases & launch scenarios
+
+* **Missing keys** – If a key is absent, the loader simply skips that field.  
+* **Multiple names per field** – The tag can contain several comma‑separated names; the first one found will be used.  
+* **Running the application** – A typical usage pattern would be:  
+
+  ```bash
+  go run ./cmd/main.go          # main package imports pkg/config
+  ```
+
+  or, if this is a library only, simply import `pkg/config` in any other Go file and call `config.NewConfig()` to obtain a ready‑to‑use configuration.
+
+---
+
+## Summary
+
+The **config** package offers:
+
+* A clean, extensible way to read environment variables into a typed struct.  
+* Automatic handling of nested structs, maps and slices via wildcard tags.  
+* A helper that converts the nested `DefaultCallOptions` into LLM call options ready for use in the rest of the application.
+
+This makes it straightforward to change configuration values without touching code – just update the `.env` file or set environment variables before launching the program.

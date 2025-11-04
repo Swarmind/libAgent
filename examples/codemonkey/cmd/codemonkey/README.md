@@ -1,32 +1,64 @@
-## Package Summary: `main`
+# Package/Component **codemonkey**
 
-This package serves as the entry point for a command-line application that leverages external planners and executors to process natural language input into executable commands. It's part of an example project (`github.com/Swarmind/libagent/examples/codemonkey`). The code currently focuses on CLI execution with hardcoded input, but contains commented-out sections suggesting original intent for GitHub issue processing via webhooks.
+## Short Summary  
+`examples/codemonkey/cmd/codemonkey/main.go` implements a simple command‑line tool that builds a plan from a textual description and executes it. The program pulls together three internal packages – `executer`, `planner`, and (commented out) `reviewer` – to orchestrate the workflow.
 
-**Imports:**
+---
 
-*   `fmt`: Standard Go package for formatted I/O.
-*   `github.com/Swarmind/libagent/examples/codemonkey/pkg/executor`: Custom package responsible for executing commands (likely shell or system calls).
-*   `github.com/Swarmind/libagent/examples/codemonkey/pkg/planner`: Custom package that translates natural language input into executable plans.
+## Environment Variables, Flags & Cmd‑Line Arguments  
+| Variable / Flag | Purpose |
+|------------------|---------|
+| `LISTEN_ADDR`   | Address on which the webhook handler listens (`utility.GetEnv("LISTEN_ADDR")`). |
+| *None*           | No explicit command‑line flags are used in this file. |
 
-**Configuration:**
+---
 
-The commented-out webhook handler suggests the use of environment variables like `LISTEN_ADDR` for configuring the server address, but this functionality is currently disabled. The main function uses a hardcoded prompt string: `"Find current OS version and OS type (windows/linux/android)"`. No other configuration options are present in the active code.
-
-**Execution Flow:**
-
-1.  The `main` function calls `planner.PlanCLIExecutor` with the hardcoded prompt to generate an executable plan.
-2.  It then prints the generated plan and executes it using `executor.ExecuteCommands`.
-
-**Inactive Functionality (Commented-Out):**
-
-*   A webhook handler (`es.StartWebhookHandler`) intended for receiving GitHub issue events is disabled. This section suggests processing issues, removing tags, and passing the result to a planner.
-*   A test snippet demonstrates manual invocation of `reviewer.GatherInfo`, planning with `planner.PlanGitHelper`, and printing results; this functionality is also inactive.
-
-**Project Package Structure:**
+## Project Package Structure  
 
 ```
-examples/codemonkey/cmd/codemonkey/
-├── main.go
+examples/codemonkey/
+├── cmd
+│   └── codemonkey
+│       └── main.go          ← entry point of the application
+└── pkg
+    ├── executer
+    │   └── ...              ← ExecuteCommands()
+    ├── planner
+    │   └── ...              ← PlanCLIExecutor()
+    └── reviewer
+        └── ...              ← GatherInfo() (currently commented out)
 ```
 
-The package consists solely of the `main.go` file, which contains the entry point for the application. The external packages (`pkg/executor`, `pkg/planner`) are assumed to be defined elsewhere within the project.
+---
+
+## Relations Between Code Entities  
+
+| Entity | Role | Interaction |
+|--------|-------|-------------|
+| `main.go` | CLI entry point | Calls `planner.PlanCLIExecutor()` to create a plan string, prints it, then hands the plan to `executer.ExecuteCommands()`. |
+| `planner.PlanCLIExecutor()` | Generates a plan from a human‑readable description. | The returned value is stored in `plan`. |
+| `executer.ExecuteCommands(plan)` | Executes the generated plan (likely via shell commands). | Consumes the string produced by `PlanCLIExecutor`. |
+| `reviewer.GatherInfo()` | (Commented out) Would build a task from issue text and repo name. | Intended to be used in future iterations of the workflow. |
+
+The commented block shows an intended “issue flow” that would consume GitHub events, but currently only the CLI‑based plan is active.
+
+---
+
+## Edge Cases & Launch Scenarios  
+
+1. **Running as a Go binary**  
+   ```bash
+   go run ./examples/codemonkey/cmd/codemonkey/main.go
+   ```
+2. **Compiling to an executable**  
+   ```bash
+   go build -o codemonkey ./examples/codemonkey/cmd/codemonkey
+   ./codemonkey
+   ```
+3. **Environment‑dependent behavior** – The program expects `LISTEN_ADDR` to be set; if omitted, the default address will be used by `utility.GetEnv`.  
+
+---
+
+## Observations & Potential Dead Code  
+- The commented “issue flow” block is currently unused; once activated it would replace or augment the CLI plan.  
+- No other files in this snippet appear dead – all imports are referenced.

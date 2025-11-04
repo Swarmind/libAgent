@@ -1,48 +1,116 @@
-```markdown
-## Package: `planner` Summary
+# Package `planner`
 
-**Package Name:** `planner`
+## Overview
+`planner.go` implements two helper functions that build and execute ReWOO queries for Git‑helper and CLI‑executor tools.  
+Both helpers share identical logic – only the prompt template differs – so a single generic routine could be extracted.
 
-**Imports:**
+---
 
-*   `context`: For managing request contexts.
-*   `encoding/json`: For JSON serialization and deserialization.
-*   `os`: For interacting with the operating system (e.g., standard error).
-*   `github.com/Swarmind/libagent/pkg/config`: For configuration management.
-*   `github.com/Swarmind/libagent/pkg/tools`: For tool execution and whitelisting.
-*   `github.com/rs/zerolog`: For structured logging.
-*   `github.com/rs/zerolog/log`: For global logger access.
-
-**External Data & Inputs:**
-
-*   The package relies on a configuration object (`config.Config`) loaded from an unspecified source (likely environment variables or files).
-*   It takes string inputs for `PlanGitHelper` and `PlanCLIExecutor` functions, which are used as prompts to external tools via the `tools.ToolsExecutor`. The exact nature of these strings determines the output.
-
-**Environment Variables/Configuration:**
-
-The package depends on a loaded configuration (`config.Config`).  Specific environment variables or file paths for loading this config are not defined in the provided code snippet, but it's assumed to be handled elsewhere (e.g., via flags or default locations). The `tools.ToolsExecutor` also relies on external tool definitions which may have their own configurations.
-
-**Edge Cases/Launch Conditions:**
-
-The functions will fatally log and exit if:
-1.  Configuration loading fails.
-2.  Tool execution fails.
-3.  The external tool returns an empty result.
-
-There are no explicit command-line arguments or flags defined in this snippet, but the configuration itself may be loaded via such mechanisms elsewhere. The package assumes that `tools.ToolsExecutor` is properly initialized and configured before use.
-
-**Project Package Structure:**
+## File structure
 
 ```
 examples/codemonkey/pkg/planner/
-├── planner.go
+└── planner.go
 ```
 
-**Code Relations & Unclear Places:**
+* `planner.go` – main source file for the package.
 
-The core logic revolves around using external tools (`tools.ReWOOToolDefinition`) to process string inputs into executable actions. The exact behavior depends entirely on the configuration of these tools and the prompts provided in `lePromptGithelper` and `lePromptCLI`.  There's no explicit error handling beyond fatal logging, which suggests a lack of recovery mechanisms.
+---
 
-The source of the input strings for `PlanGitHelper` and `PlanCLIExecutor` is not defined within this snippet; they are likely passed from another part of the system. The purpose of these functions (e.g., what kind of "Reviewer Result" or "task" they process) remains unclear without further context.
+## Imports & dependencies
+```go
+import (
+	"context"
+	"encoding/json"
 
-<end_of_output>
+	"os"
+
+	"github.com/Swarmind/libagent/pkg/config"
+	"github.com/Swarmind/libagent/pkg/tools"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+)
 ```
+| Import | Purpose |
+|--------|---------|
+| `context` | Go context handling for tool execution |
+| `encoding/json` | Marshal query payloads to JSON |
+| `os` | Write logs / errors to stderr |
+| `config` | Load configuration needed by the tools executor |
+| `tools` | ReWOOTool executor utilities |
+| `zerolog` & `log` | Structured logging |
+
+---
+
+## Environment variables, flags and CLI arguments
+* **Environment** – none explicitly read; the package relies on defaults from `config.NewConfig()`.
+* **Flags / command‑line args** – not present in this file; the two exported functions accept a single string argument each (`review` or `task`).  
+  They can be invoked directly from another package (e.g. a CLI entry point) as:
+  ```go
+  result := planner.PlanGitHelper("my review")
+  ```
+* **Files & paths** – only `planner.go`; no sub‑packages.
+
+---
+
+## External data / input sources
+
+| Source | Purpose |
+|--------|---------|
+| `lePromptGithelper` | Prompt template for the Git helper tool |
+| `lePromptCLI` | Prompt template for the CLI executor tool |
+| `config.NewConfig()` | Loads configuration needed by the tools executor |
+| `tools.ReWOOToolDefinition.Name` | Tool name to whitelist in executor |
+| `json.Marshal(rewooQuery)` | Serializes query payload for ReWOO tool |
+
+---
+
+## Core logic
+
+### Prompt constants
+```go
+const lePromptGithelper = `Role: You are an Instruction Synthesis Agent...`
+const lePromptCLI = `You are an AI command generation assistant specialized in creating executable CLI command sequences...`
+```
+
+These strings form the instruction prefix for each ReWOO query.
+
+### `PlanGitHelper(review string) string`
+1. Sets global log level and logger (`zerolog.SetGlobalLevel(zerolog.InfoLevel)`).
+2. Loads configuration via `config.NewConfig()`.
+3. Creates a background context.
+4. Whitelists the tool name in an executor instance.
+5. Builds a query by concatenating the Git‑helper prompt with the supplied review text.
+6. Marshals the query to JSON, calls the tool, and returns its result.
+
+### `PlanCLIExecutor(task string) string`
+Identical flow as above but uses the CLI prompt (`lePromptCLI`) instead of the Git helper one.
+
+---
+
+## Relations & potential refactor
+* Both functions perform the same steps; only the prompt source differs.  
+  A single generic routine such as:
+  ```go
+  func planWithPrompt(prompt string, reviewOrTask string) string { … }
+  ```
+  could replace both and reduce duplication.
+
+* The package currently has no dead code – all imports are used, and every function is exported for external use.
+
+---
+
+## Edge cases & launch scenarios
+* **Library usage** – other packages can import `planner` and call either helper directly.
+* **CLI entry point** – a separate main package could expose a command that forwards user input to one of these helpers and prints the result.  
+  Example:
+  ```bash
+  go run ./cmd/planner-cli --mode=githelper --review="…"
+  ```
+  (the actual CLI flags would be defined in the main package, not shown here).
+
+---
+
+## Summary
+`planner.go` provides two convenience functions that generate ReWOO queries for Git‑helper and CLI‑executor tools.  
+The code is straightforward; the only improvement would be to merge the duplicated logic into a single helper.

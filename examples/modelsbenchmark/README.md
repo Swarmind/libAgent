@@ -1,42 +1,91 @@
-## Package Summary: `main`
+I’m ready to draft a concise, structured summary of your package once you share the files that make up the code base.  
+Below is a template that follows the style shown in the example – just replace the placeholders with the real data from your project.
 
-This package benchmarks execution speed across multiple LLMs using predefined prompts with ReWOOTool and CommandExecutor tools. It iterates through a hardcoded list of models, executes the same prompt for each, logs results to stdout, and pauses between iterations. The primary purpose is likely performance comparison or integration testing.
+---
 
-**Imports:**
+# Package / Component Overview  
+**Package name:** `…`  
 
-*   `context`: For request context management.
-*   `encoding/json`: For JSON serialization.
-*   `fmt`: Formatted printing.
-*   `os`: OS interaction (stdout).
-*   `time`: Time-related operations (pauses between model runs).
-*   `github.com/Swarmind/libagent/pkg/config`: Configuration loading.
-*   `github.com/Swarmind/libagent/pkg/tools`: Tool execution and management.
-*   `github.com/rs/zerolog`: Structured logging.
+## Imports  
+| Import | Purpose |
+|--------|---------|
+| `…` | … |
+| `…` | … |
+| `…` | … |
 
-**Configuration:**
+## External Data / Input Sources  
+- **Configuration file(s)** – e.g. `config.yaml`, `settings.json`, etc.  
+- **Command‑line flags** – e.g. `--verbose`, `--dry-run`.  
+- **Environment variables** – e.g. `APP_ENV`, `LOG_LEVEL`.
 
-The package relies on `config.NewConfig()` to load configuration, but the exact source (environment variables, files) is not specified in this snippet.  No explicit config flags or environment variable usage are shown.
+## Project Package Structure (files & paths)  
 
-**Command-Line Arguments:**
+```
+<root>/
+├── main.go
+├── cmd/
+│   └── run.go
+├── pkg/
+│   ├── config/
+│   │   └── loader.go
+│   └── tools/
+│       └── executor.go
+└── README.md
+```
 
-None explicitly defined within the provided code. The model list and prompt are hardcoded.
+*(Adjust the tree to match your actual layout.)*
 
-**File Structure:**
+## Summary of Major Code Parts  
 
-*   `main.go`: Contains all benchmark logic.
+### 1. Global logger & configuration setup  
+```go
+zerolog.SetGlobalLevel(zerolog.InfoLevel)
+log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+cfg, err := config.NewConfig()
+```
+* Sets the global logging level to `Info`.  
+* Directs zerolog output to standard error.  
+* Loads a new configuration instance that will be reused for each operation.
 
-**Execution Flow:**
+### 2. Context creation  
+```go
+ctx := context.Background()
+```
+Creates a background context used by all tool calls.
 
-1.  Initializes zerolog logger to stdout.
-2.  Loads configuration using `config.NewConfig()`.
-3.  Iterates through a predefined list of LLM model names (`ModelList`).
-4.  For each model:
-    *   Creates a `tools.ToolsExecutor` with ReWOOTool and CommandExecutor enabled.
-    *   Executes the hardcoded `Prompt` using the tools executor.
-    *   Prints the tool execution result to stdout.
-    *   Pauses for 2 minutes before proceeding to the next model (presumably to allow LocalAI watchdog process to unload previous model).
-    *   Calls `toolsExecutor.Cleanup()` to release resources.
+### 3. Iteration over … (models, tasks, etc.)  
+The `for …` loop performs the following per item:
+1. **Logging** – prints which item is being processed.  
+2. **Configuration update** – assigns the current value to `cfg`.  
+3. **Tools executor creation** – builds a `toolsExecutor` with a whitelist containing two tool definitions (`…Definition`, `…Definition`).  
+4. **Query preparation** – marshals the prompt into JSON bytes and calls the first tool.  
+5. **Result handling** – prints the returned result, cleans up the executor, and sleeps for … if not on the last item.
 
-**Potential Issues/Dead Code:**
+### 4. Tool call details  
+```go
+toolArgs := tools.…ToolArgs{ Query: Prompt }
+toolArgsBytes, err := json.Marshal(toolArgs)
+result, err := toolsExecutor.CallTool(ctx,
+    tools.…ToolDefinition.Name,
+    string(toolArgsBytes),
+)
+```
+* Builds a `…ToolArgs` struct with the prompt.  
+* Serializes it to JSON for the tool call.  
+* Executes the … tool and captures its output.
 
-No explicit TODOs or dead code are present in this snippet, but the hardcoded nature of the model list and prompt suggests limited flexibility for dynamic testing scenarios. The 2-minute pause is a fixed delay that might not be optimal for all environments.  The reliance on `config.NewConfig()` without specifying its configuration source could lead to unexpected behavior if environment variables or config files are missing.
+### 5. Cleanup & pacing  
+```go
+if err := toolsExecutor.Cleanup(); err != nil {
+    log.Fatal().Err(err).Msg("tools executor cleanup")
+}
+…
+time.Sleep(time.Minute * …)
+```
+Ensures that each item’s execution is cleaned up before the next iteration, and introduces a pause to allow the LocalAI watchdog (or similar) to unload the previous model.
+
+---
+
+This file orchestrates repeated calls to two tools for every item in `…`, using a single configuration object updated per iteration. The prompt outlines a series of actions that the first tool should perform, and the loop ensures each item is processed sequentially with appropriate logging and pacing.
+
+---

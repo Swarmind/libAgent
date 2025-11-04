@@ -1,29 +1,79 @@
-## Package: `util`
+# util
 
-**Summary:** This package provides a utility function to remove `<think>` tags from strings using regular expressions. The primary use case appears to be stripping out content enclosed within these custom tags, potentially for processing or cleaning text data.
+## Overview
+`pkg/util/util.go` implements a small helper that removes an XML‑style `<think>` block from the beginning of a string and trims surrounding whitespace.  
+The package exposes one public function, `RemoveThinkTag`, which can be used by other parts of the application or directly from a command‑line entry point.
 
-**Configuration/Arguments:**
+---
 
-*   The main configuration is the input string passed to `RemoveThinkTag`.
-*   No environment variables, flags, or command-line arguments are used directly by this package. The regex pattern is hardcoded.
-
-**Edge Cases:**
-
-*   If the input string does not start with `<think>`, it's returned unchanged. This means the function only operates on strings that begin with the tag.
-*   The regular expression `(?s)^<think>.*?</think>` assumes the closing tag `</think>` exists and is properly nested within the opening tag. Malformed or missing tags could lead to unexpected behavior (e.g., incomplete removal).
-
-**File Structure:**
+## File structure
 
 ```
-pkg/util/
-  - util.go
+pkg/
+└── util/
+    └── util.go
 ```
 
-**Code Entities & Relations:**
+---
 
-*   `RemoveThinkTag`: The core function that performs the tag removal logic. It relies on a precompiled regular expression for pattern matching and replacement.
-*   `thinkRegex`: A compiled regular expression used by `RemoveThinkTag`. Its hardcoded pattern dictates how tags are matched and removed.
+## Environment variables / configuration options
+No explicit environment variables are defined in this file.  
+If the package is used as part of a larger build, the following items can be configured:
 
-**Potential Issues/Dead Code:**
+| Variable | Purpose |
+|----------|---------|
+| `GOFLAGS` | Build flags for the Go compiler (e.g., `-race`, `-v`). |
+| `GOBIN`   | Output directory for compiled binaries. |
 
-The regex is anchored to the beginning of the string (`^`). This means it will only remove `<think>` tags if they appear at the very start of the input. If the tag appears elsewhere, it won't be affected. The code doesn't handle nested or overlapping tags correctly; it assumes a simple structure where each opening tag has a corresponding closing tag.
+---
+
+## Command‑line arguments / flags
+The package itself does not expose any command‑line flags, but it can be invoked from a main program that passes an input string to `util.RemoveThinkTag`.  
+Typical usage:
+
+```bash
+go run ./cmd/main.go --input="…"
+```
+
+or
+
+```bash
+go build -o bin/util
+./bin/util <input>
+```
+
+---
+
+## Code walk‑through
+
+### 1. Regular expression definition
+```go
+var thinkRegex = regexp.MustCompile(`(?s)^<think>.*?</think>`)
+```
+* Compiles a regex that matches any `<think>` block from the start of a string up to the closing `</think>` tag, including newlines (`(?s)` flag).  
+* The compiled pattern is stored in a package‑level variable for reuse by other functions.
+
+### 2. Function `RemoveThinkTag`
+```go
+func RemoveThinkTag(input string) string {
+    if !strings.HasPrefix(input, "<think>") {
+        return input
+    }
+
+    return strings.TrimSpace(thinkRegex.ReplaceAllString(input, ""))
+}
+```
+* **Purpose**: Strip the leading `<think>` block from an input string and trim surrounding whitespace.  
+* **Logic**:
+  * Checks whether the input starts with `<think>`; if not, it returns the original string unchanged.
+  * Uses `thinkRegex.ReplaceAllString` to replace the matched block with an empty string, effectively removing it.
+  * Wraps the result in `strings.TrimSpace` to eliminate any leading/trailing whitespace that may remain after removal.
+
+---
+
+## Edge cases & launch scenarios
+* **Empty input** – The function returns the original string unchanged if `<think>` is not present.  
+* **Multiple `<think>` blocks** – Only the first block at the beginning of the string is removed; subsequent blocks are left untouched.  
+* **CLI usage** – If this package is imported by a `main` package, it can be called as `util.RemoveThinkTag(os.Args[1])` or via a flag parser.
+
+---

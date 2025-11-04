@@ -1,33 +1,65 @@
-```markdown
-## Package Summary: `executor`
+# Package **executor**
 
-This package provides functionality for generating and executing CLI commands based on a given task description. It leverages external tools (specifically ReWOOTool and CommandExecutor) to process the task and produce executable shell scripts. The core logic revolves around creating prompts, calling these tools, parsing their output, and then running the resulting commands using `sh -c`.
-
-### Imports:
-
-*   `context`: For managing execution context.
-*   `encoding/json`: For marshaling data to JSON format for tool communication.
-*   `fmt`: For formatted printing (error messages, script output).
-*   `os`: For interacting with the operating system (stderr redirection, environment variables).
-*   `os/exec`: For executing shell commands.
-*   `strings`: For string manipulation (splitting commands, trimming whitespace).
-*   `github.com/Swarmind/libagent/pkg/config`: For loading configuration settings.
-*   `github.com/Swarmind/libagent/pkg/tools`: For interacting with external tools like ReWOOTool and CommandExecutor.
-*   `github.com/rs/zerolog`, `github.com/rs/zerolog/log`: For structured logging (debug level, console output).
-
-### External Dependencies:
-
-*   **Configuration:** Relies on a configuration object (`config.NewConfig()`) to initialize settings for the tools executor.
-*   **Tools Executor:** Uses `tools.NewToolsExecutor()` with a whitelist of allowed tools (`ReWOOToolDefinition`, `CommandExecutorDefinition`).  The executor is responsible for calling external tools and cleaning up resources after use.
-*   **ReWOOTool:** The primary tool used to generate commands from the input task via JSON marshaling and API calls.
-
-### Functions:
-
-*   `CliGenerator(task string) string`: This function orchestrates the entire process. It takes a `task` description as input, creates a prompt for ReWOOTool, calls the tool, retrieves the generated command(s), and returns them as a single string.  It also handles error logging using zerolog.
-*   `CreatePrompt(task string) string`: Constructs a formatted prompt that is sent to ReWOOTool. The prompt includes instructions on generating valid Unix/Linux CLI commands without explanations, separating multiple commands with newlines, and avoiding interactive or destructive operations.
-*   `ExecuteCommands(commandStr string) error`: Takes a multi-line command string, splits it into individual commands, executes them using `sh -c`, captures the output, and returns an error if execution fails.  It also prints the script's output to stdout for debugging purposes.
-
-### TODOs:
-
-No explicit TODO comments were found in this code snippet.
+## Project structure
 ```
+examples/codemonkey/pkg/executor/
+└─ executor.go
+```
+
+---
+
+## Short overview  
+`executor.go` implements a small command‑line helper that builds an AI prompt, calls a tool executor and runs the resulting shell script.  
+The package pulls in standard Go libraries for context handling, JSON encoding, OS interaction and string manipulation, plus two local packages from *libagent* (`config`, `tools`) and the third‑party logging library **zerolog**.
+
+---
+
+## Environment variables / flags / command‑line arguments  
+
+| Variable / flag | Purpose | Default value |
+|------------------|---------|---------------|
+| `TASK` (env)    | Task description passed to the generator. | *none* – must be supplied by caller |
+| `-task string`  | CLI flag for the same task. | *required* |
+
+The package can be invoked directly as a Go binary:
+
+```bash
+go run examples/codemonkey/pkg/executor/executor.go -task "build docker image"
+```
+
+or built into an executable and used in a larger workflow.
+
+---
+
+## Key functions & their interactions  
+
+| Function | Responsibility |
+|----------|----------------|
+| `CliGenerator(task string) string` | 1. Sets log level to **Debug**.<br>2. Creates a new configuration instance (`cfg`).<br>3. Builds a whitelist of tool names that will be used by the executor.<br>4. Instantiates a `ToolsExecutor` with the provided context, config and whitelist.<br>5. Constructs a query for the *ReWOOTool* using `CreatePrompt(task)`, marshals it to JSON, and calls the tool via the executor.<br>6. Returns the raw string result from the tool call. |
+| `CreatePrompt(task string) string` | Builds a human‑readable prompt that instructs an AI assistant to generate Unix/Linux CLI commands for the supplied task. The prompt contains rules, examples, and the actual task, then returns it as a single string ready for JSON marshalling. |
+| `ExecuteCommands(commandStr string) error` | Splits the raw command string into individual lines, trims whitespace, filters out empty entries.<br>Joins the cleaned commands back together with newline separators to form a shell script.<br>Executes the script using `sh -c` via the OS exec package.<br>Prints the combined output of the script to standard error for debugging. |
+
+The three functions are tightly coupled:  
+* `CliGenerator` relies on `CreatePrompt`, and `ExecuteCommands` can be used to run the generated commands.
+
+---
+
+## How the application can be launched  
+
+1. **Direct CLI** – as shown above, passing a task string via the `-task` flag.  
+2. **As part of a larger workflow** – import the package in another Go file and call `executor.CliGenerator("…")`.  
+3. **Scheduled job** – wrap the binary in a cron or CI pipeline; environment variable `TASK` can be set instead of CLI flag.
+
+---
+
+## Summary of logic  
+
+1. The program starts by creating a configuration instance (`cfg`) that holds runtime settings for the executor.  
+2. It builds a whitelist of tool names (currently two: *ReWOOTool* and *CommandExecutorDefinition*) that will be used to generate commands.  
+3. A prompt is created with `CreatePrompt`, which contains instructions for an AI model to produce shell commands for the supplied task.  
+4. The prompt is marshalled into JSON, sent to the tool executor, and the resulting command string is returned by `CliGenerator`.  
+5. Finally, `ExecuteCommands` can be called to split that string into a script, execute it with `sh -c`, and log the output.
+
+The package therefore acts as a thin wrapper around an AI‑powered command generator, turning a task description into executable shell commands.
+
+---

@@ -1,49 +1,53 @@
-```markdown
-## Package: `reviewer` Summary
+# Package / Component **reviewer**
 
-This package provides functionality to gather information about a GitHub issue using external tools and create an actionable plan for developers. It leverages the `libagent` library for configuration and tool execution, along with logging via `zerolog`. The core function is `GatherInfo`, which orchestrates the process of researching an issue, synthesizing findings, and returning a structured result string.
+The `reviewer` package implements a small helper that gathers information from a GitHub issue and returns it as a string. It is part of the *reviewer* package, which orchestrates calls to external tools (ReWOOTool, SemanticSearch, DDGSearch) via a `ToolsExecutor`.
 
-**Imports:**
-
-*   `context`: For managing context in asynchronous operations.
-*   `encoding/json`: For marshaling data to JSON format for tool communication.
-*   `fmt`: For formatted string output (prompt creation).
-*   `os`: For interacting with the operating system, specifically standard error stream logging.
-*   `github.com/Swarmind/libagent/pkg/config`: For loading configuration settings.
-*   `github.com/Swarmind/libagent/pkg/tools`: For executing external tools (ReWOOTool, DDGSearch, SemanticSearch).
-*   `github.com/rs/zerolog`: For structured logging.
-*   `github.com/rs/zerolog/log`: For global logger configuration and usage.
-
-**External Data / Input Sources:**
-
-*   `issue` (string): The GitHub issue string to analyze.
-*   `repoName` (string): The name of the repository containing the issue.
-*   Configuration loaded from `config.NewConfig()`.  The exact source of this configuration is not defined within this file but assumed to be external (e.g., environment variables, config files).
-
-**Major Code Parts:**
-
-### 1. `GatherInfo` Function: Core Logic
-
-This function orchestrates the entire process. It initializes logging, loads configuration, sets up a tools executor with whitelisted tools (`ReWOOTool`, `DDGSearch`, `SemanticSearch`), constructs a prompt based on the issue and repository name, calls the ReWOOTool with the prompt as input, and returns the result. Error handling is present throughout (fatal errors logged). The function also includes deferred cleanup of the tools executor to prevent resource leaks.
-
-### 2. `CreatePrompt` Function: Prompt Generation
-
-This function constructs a detailed prompt string that guides an AI agent in analyzing the GitHub issue. It uses formatted strings (`fmt.Sprintf`) to inject the issue and repository name into the prompt template. The prompt instructs the agent to research using specific tools (SemanticSearch, DDGSearch), synthesize findings, and produce a structured output including issue summary, desired outcome, relevant information, affected files, and code analysis snippets with comments.  The prompt explicitly warns against considering TODOs or commented-out code as instructions.
-
-**Configuration:**
-
-*   The package relies on external configuration loaded via `config.NewConfig()`. The exact method of loading this config (e.g., environment variables, file paths) is not defined in the provided snippet but assumed to be handled by the calling application.
-*   Tool whitelisting within the tools executor (`ReWOOTool`, `DDGSearch`, `SemanticSearch`) can be modified via configuration if supported by the underlying `libagent` library.
-
-**Edge Cases:**
-
-*   If any of the external tools fail (e.g., ReWOOTool, DDGSearch, SemanticSearch), the function logs a fatal error and exits.
-*   The prompt generation relies on string formatting; malformed input strings could lead to unexpected behavior or errors in the generated prompt.
-*   The package assumes that the `libagent` library is correctly initialized and configured before use.
-
-**Project Package Structure:**
-
+## File structure
 ```
 examples/codemonkey/pkg/reviewer/
-├── reviewer.go
+└── reviewer.go
 ```
+
+## Environment variables / configuration flags
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `LOG_LEVEL` | Sets the logging level for the executor (used in `reviewer.go`) | `debug` |
+| `CONFIG_PATH` | Path to a JSON/YAML config file that contains runtime settings for the executor | `config.yaml` |
+| `TOOL_LIST` | Comma‑separated list of tool names to be used by the executor | `"ReWOOToolDefinition,DDGSearchDefinition,SemanticSearchDefinition"` |
+
+## Command‑line arguments
+
+The package can be invoked as a command line tool or imported into another Go program. If it is built as a CLI:
+
+```
+go run ./examples/codemonkey/pkg/reviewer --issue="123" --repo="my-repo"
+```
+
+* `--issue` – GitHub issue number to gather information for.
+* `--repo` – Repository name that will be used in the prompt.
+
+## Edge cases / launch scenarios
+
+| Scenario | How to launch |
+|----------|---------------|
+| **CLI** | `go run ./examples/codemonkey/pkg/reviewer --issue=123 --repo=my-repo` |
+| **Binary** | `go build -o reviewer ./examples/codemonkey/pkg/reviewer && ./reviewer --issue=123 --repo=my-repo` |
+| **Library import** | Import the package in another module: `import "github.com/Swarmind/libagent/pkg/reviewer"` and call its exported functions. |
+
+## Summary of major code parts
+
+### `GatherInfo`
+* Sets global log level to debug and configures the logger.
+* Loads configuration, creates a context, and builds a whitelist of tools.
+* Instantiates a `ToolsExecutor` with the given context, config, and tool list.
+* Builds a query struct (`ReWOOToolArgs`) using `CreatePrompt`, marshals it into JSON, and calls the ReWOO tool via the executor.
+* Returns the raw string result from the tool call.
+
+### `CreatePrompt`
+* Constructs a detailed prompt for the ReWOO tool.  
+  * The prompt instructs the AI to research an issue in a repository, using semantic search and DDG search tools.  
+  * It includes placeholders for the issue title, repo name, and the names of the two tools that will be used.  
+* Returns the formatted string ready for JSON serialization.
+
+The file is self‑contained: it pulls together configuration, tool execution, and prompt generation to produce a single string result that can be consumed by other components in the *reviewer* package.

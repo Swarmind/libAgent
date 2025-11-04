@@ -1,34 +1,84 @@
 # examples/modelsbenchmark/main.go  
-## Package Summary: `main`  
+# Package / Component Overview    
+**Package name:** `main`    
   
-This package demonstrates a tool-calling workflow using the `libagent` library, specifically designed to iterate through a list of language models and execute a predefined set of actions for each one. The primary goal is to test the execution of commands via tools like ReWOOTool and CommandExecutor within a controlled environment.  
+## Imports  
+| Import | Purpose |  
+|--------|---------|  
+| `context` | Provides background context for tool execution |  
+| `encoding/json` | Marshal query arguments to JSON |  
+| `fmt` | Print results to stdout |  
+| `os` | Access stderr for zerolog output |  
+| `time` | Sleep between model calls |  
+| `github.com/Swarmind/libagent/pkg/config` | Load and store configuration data |  
+| `github.com/Swarmind/libagent/pkg/tools` | Create tool executor, whitelist tools, call tools |  
+| `github.com/rs/zerolog` | Logging library |  
+| `github.com/rs/zerolog/log` | Logger instance |  
   
-**Imports:**  
+---  
   
-*   `context`: For managing request contexts.  
-*   `encoding/json`: For serializing data structures into JSON format.  
-*   `fmt`: For formatted printing.  
-*   `os`: For interacting with the operating system (e.g., standard output).  
-*   `time`: For time-related operations, such as pausing execution between model iterations.  
-*   `github.com/Swarmind/libagent/pkg/config`: For loading configuration settings.  
-*   `github.com/Swarmind/libagent/pkg/tools`: For interacting with tools and executing commands.  
-*   `github.com/rs/zerolog`: For structured logging.  
+## External Data / Input Sources  
+- **Model list** – a hard‑coded slice of model identifiers (`ModelList`) that will be iterated over.  
+- **Prompt string** – a multiline plan used as the query for the ReWOOTool.    
+- **Configuration** – loaded via `config.NewConfig()` and updated per iteration with the current model.  
   
-**External Data & Inputs:**  
+---  
   
-*   The `ModelList` variable defines a hardcoded list of language model names to iterate through.  
-*   The `Prompt` constant contains a multi-step action plan that will be executed by the tools for each model. This includes file manipulation, network checks (port scanning), external service calls (wttr.in weather API), and git repository operations.  
+## TODO Comments  
+No explicit `TODO:` markers are present in this file, but the comment at the top indicates that the example demonstrates multiple tool calls for different config values.  
   
-**TODOs:**  
+---  
   
-No explicit TODO comments are present in this code snippet.  
+# Summary of Major Code Parts  
   
-### Code Sections:  
+### 1. Global logger & configuration setup    
+```go  
+zerolog.SetGlobalLevel(zerolog.InfoLevel)  
+log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})  
+cfg, err := config.NewConfig()  
+```  
+* Sets the global logging level to `Info`.    
+* Directs zerolog output to standard error.    
+* Loads a new configuration instance that will be reused for each model.  
   
-*   **Initialization**: The `main` function initializes logging with zerolog to the console. It loads configuration using `config.NewConfig()`.  
-*   **Model Iteration**: A loop iterates through each model name in the `ModelList`. Inside the loop, a `tools.ToolsExecutor` is created for each model, configured with specific tool whitelists (ReWOOTool and CommandExecutor).  
-*   **Tool Execution**: The ReWOOTool is called with the predefined `Prompt`, which contains the action plan. The result of the tool call is printed to standard output. Error handling includes logging warnings and pausing execution for 2 minutes between models, presumably to allow a LocalAI watchdog process to unload the previous model before loading the next one.  
-*   **Cleanup**: After each tool call, `toolsExecutor.Cleanup()` is called to release resources.  
+### 2. Context creation    
+```go  
+ctx := context.Background()  
+```  
+Creates a background context used by all tool calls.  
   
-This package serves as an integration test or demonstration of how to orchestrate multiple tool calls with different language models in sequence, while handling potential errors and resource management (model unloading). The hardcoded nature of the model list and prompt suggests this may be a testing or proof-of-concept implementation rather than production code.  
+### 3. Iteration over models    
+The `for idx, model := range ModelList` loop performs the following per model:  
+1. **Logging** – prints which model is being processed.    
+2. **Configuration update** – assigns the current model to `cfg.Model`.    
+3. **Tools executor creation** – builds a `toolsExecutor` with a whitelist containing two tool definitions (`ReWOOToolDefinition`, `CommandExecutorDefinition`).    
+4. **Query preparation** – marshals the prompt into JSON bytes and calls the ReWOO tool.    
+5. **Result handling** – prints the returned result, cleans up the executor, and sleeps for 2 minutes if not on the last model.  
+  
+### 4. Tool call details    
+```go  
+rewooQuery := tools.ReWOOToolArgs{ Query: Prompt }  
+rewooQueryBytes, err := json.Marshal(rewooQuery)  
+result, err := toolsExecutor.CallTool(ctx,  
+    tools.ReWOOToolDefinition.Name,  
+    string(rewooQueryBytes),  
+)  
+```  
+* Builds a `ReWOOToolArgs` struct with the prompt.    
+* Serializes it to JSON for the tool call.    
+* Executes the ReWOO tool and captures its output.  
+  
+### 5. Cleanup & pacing    
+```go  
+if err := toolsExecutor.Cleanup(); err != nil {  
+    log.Fatal().Err(err).Msg("tools executor cleanup")  
+}  
+...  
+time.Sleep(time.Minute * 2)  
+```  
+Ensures that each model’s execution is cleaned up before the next iteration, and introduces a 2‑minute pause to allow the LocalAI watchdog to unload the previous model.  
+  
+---  
+  
+This file orchestrates repeated calls to two tools for every model in `ModelList`, using a single configuration object updated per iteration. The prompt outlines a series of actions that the ReWOO tool should perform, and the loop ensures each model is processed sequentially with appropriate logging and pacing.  
   

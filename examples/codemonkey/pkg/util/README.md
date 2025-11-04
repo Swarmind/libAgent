@@ -1,44 +1,49 @@
-## Package: `main`
+<end_of_output>  
 
-This package defines a command-line application for processing files based on user input and environment variables. It reads file paths from the command line, checks if they exist, and performs operations like printing their contents or calculating checksums. The program exits with an error message if any required arguments are missing or invalid.
+# Package `utility`
 
-**Imports:**
+## Short Summary  
+The **`utility`** package provides a single helper function, `GetEnv`, that reads an environment variable by key and logs a fatal error if the value is missing. It is intended to be used wherever configuration values need to be fetched from the process environment.
 
-*   `fmt`: For formatted output to the console.
-*   `os`: For interacting with the operating system (command-line arguments, file existence checks).
-*   `crypto/md5`: For calculating MD5 checksums of files.
-*   `io`: For reading from files.
-*   `log`: For logging errors and exiting the program.
+---
 
-**Environment Variables:**
+## Environment Variables & Configuration  
 
-The application uses `DEBUG` environment variable to control verbose output. If set to "true", it prints additional debugging information during file processing.
+| Variable | Purpose |
+|----------|---------|
+| *Any* (`key string`) | The name of the environment variable that `GetEnv` will read. No default key is hard‑coded; callers supply it at runtime.|
 
-**Command-Line Arguments:**
+No command‑line flags or arguments are defined in this file, but the function can be called from any other package (e.g., a CLI entry point) to obtain configuration values.
 
-The program expects one or more file paths as command-line arguments. It checks if each provided path exists before attempting to process the file. If a file does not exist, an error message is printed, and the program exits with a non-zero exit code.
+---
 
-**Function Summary:**
+## Project Package Structure  
 
-### `main()`
+```
+examples/
+└── codemonkey/
+    └── pkg/
+        └── util/
+            └── utils.go
+```
 
-This function parses command-line arguments, iterates through them, and performs actions based on whether each file exists:
-1.  If DEBUG environment variable is set to "true", it prints verbose output about processing each file.
-2.  It checks if the provided file path exists using `os.Stat()`. If not, it logs an error message with `log.Fatalf()` and exits.
-3.  For existing files, it reads their contents into a byte slice using `io.ReadFile()`.
-4.  It calculates the MD5 checksum of the file's content using `crypto/md5` package.
-5.  Finally, it prints the file path along with its calculated MD5 hash to standard output.
+* `utils.go` – contains the implementation of `GetEnv`.
 
-**Edge Cases:**
+---
 
-*   If no command-line arguments are provided, the program exits with an error message.
-*   The application does not handle symbolic links or other special file types beyond basic existence checks.
-*   Large files may consume significant memory when read into a byte slice using `io.ReadFile()`. Consider streaming for very large files to avoid memory issues.
+## Code Relations & Edge Cases  
 
-**Project Package Structure:**
+### Function `GetEnv`
+- **Signature**: `func GetEnv(key string) string`
+- **Behavior**  
+  1. Calls `os.Getenv(key)` to fetch the value for the supplied key.  
+  2. If the returned string is empty, it logs a fatal message via `log.Fatal().Msgf`.  
+  3. Returns the fetched value.
 
--   `main.go`
+### Edge Cases
+- **Missing Key**: If the environment variable is not set, the function will log a fatal error and terminate the program.  
+- **Empty Value**: The same fatal path applies if the key exists but holds an empty string.  
 
-**Relations Between Code Entities:**
+The package can be used directly from a command‑line entry point (e.g., `main.go`) by importing `"examples/codemonkey/pkg/util"` and calling `util.GetEnv("MY_VAR")`. No additional flags or arguments are required for this helper.
 
-The main function orchestrates the entire process, relying on standard library packages like `os`, `crypto/md5`, and `io` to perform file system operations and checksum calculations. The DEBUG environment variable controls verbosity without altering core functionality. Error handling is done via `log.Fatalf()`, which terminates execution upon failure.
+---

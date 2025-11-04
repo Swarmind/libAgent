@@ -1,24 +1,121 @@
-## Package `main` Summary
+# Package `main` – Git Helper Legacy
 
-This package provides a command-line tool that leverages ReWOO (a large language model agent) to automate GitHub issue resolution. It takes a repository URL, an issue identifier (number, URL, or description), and optional additional context as input. The core logic involves constructing a detailed task description for the ReWOO agent, including instructions on cloning the repository, identifying relevant files, making changes using `git` commands executed via a custom tool (`CommandExecutor`), and verifying those changes before committing them.
+## Project structure
+```
+examples/gitHelperLegacy/
+└── main.go
+```
 
-### Environment Variables & Flags:
+---
 
-*   `-repo`: Repository URL (default: `https://github.com/JackBekket/Reflexia`).
-*   `-issue`: Issue identifier (required). Can be an issue number, full URL, or descriptive text.
-*   `-additionalContext`: Optional additional context for the ReWOO agent's task.
+## Imports & Purpose  
 
-### File Structure:
+| Import | Purpose |
+|--------|---------|
+| `context` | Provides background context for tool execution |
+| `encoding/json` | JSON marshaling of ReWOO query arguments |
+| `flag` | Command‑line flag parsing (`repo`, `issue`, `additionalContext`) |
+| `fmt` | String formatting (task description, logs) |
+| `os` | Access to standard error output for logger |
+| `path/filepath` | Path manipulation for repo name extraction |
+| `strings` | String trimming & splitting |
+| `github.com/Swarmind/libagent/pkg/config` | Application configuration loader |
+| `github.com/Swarmind/libagent/pkg/tools` | Tool definitions and executor |
+| `github.com/rs/zerolog` | Logging level control |
+| `github.com/rs/zerolog/log` | Logger instance |
 
-*   `main.go`: Contains the main application logic, including argument parsing, tool setup, task description construction, and ReWOO execution.
+---
 
-### Major Code Parts Summary:
+## Environment variables, flags & command‑line arguments  
 
-1.  **Initialization:** Sets up logging with `zerolog` at debug level and loads configuration using `config.NewConfig()`.
-2.  **Argument Parsing:** Parses command-line flags for repository URL, issue input, and additional context. Validates that the `-issue` flag is provided.
-3.  **Tool Setup:** Creates a `toolsExecutor` instance with whitelisted tools: `ReWOOTool`, `CommandExecutor`, `SemanticSearchTool`, and `WebReaderTool`. The executor handles cleanup using `defer`.
-4.  **Repository Details Extraction:** Extracts the repository name from the URL, defaulting to "Reflexia" if the default repo is used.
-5.  **Task Description Construction:** Constructs a detailed task description for ReWOO, including instructions on cloning the repository, finding and modifying files using `CommandExecutor` (which executes shell commands), verifying changes with `git status`, and handling multi-line modifications. The code warns about exceeding 4000 character limits for task descriptions.
-6.  **ReWOO Execution:** Marshals ReWOO query arguments into JSON, calls the ReWOO tool using the tools executor, prints the result to stdout, and provides operational reminders (git/gh installation, authentication, pgvector database setup).
+* **Flags**  
+  * `-repo` – defaults to the constant `defaultRepoURL`.  
+  * `-issue` – required; can be a number, full URL, or descriptive text.  
+  * `-additionalContext` – optional string that is appended to the ReWOO prompt.
 
-The code is designed as a self-contained example of how to integrate ReWOO with external tools for automating GitHub issue resolution. The task description is highly detailed, providing step-by-step instructions for the agent to follow. Error handling and logging are implemented throughout the process.  The `CommandExecutor` tool allows arbitrary shell commands to be executed within the workflow, which could pose security risks if not carefully controlled.
+* **Environment variables** – none explicitly referenced in this file.
+
+* **Command‑line usage**  
+  ```bash
+  go run examples/gitHelperLegacy/main.go -repo <url> -issue <id|url|text> [-additionalContext <txt>]
+  ```
+
+---
+
+## How the application can be launched (edge cases)
+
+1. **Default launch** – no flags supplied; uses hard‑coded defaults for `repo` and empty context.  
+2. **Custom repo URL** – supply a full GitHub repository URL via `-repo`.  
+3. **Issue as number** – pass an issue number (`-issue 42`) which will be interpreted by the ReWOO tool.  
+4. **Full context string** – add extra context with `-additionalContext` to influence the prompt.
+
+---
+
+## Code logic summary
+
+### 1. Logging & flag setup
+```go
+zerolog.SetGlobalLevel(zerolog.DebugLevel)
+log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+```
+Initializes global logger and sets output to `stderr`. Flags are defined, parsed, and validated (`issue` must be non‑empty).
+
+### 2. Configuration & context
+```go
+cfg, err := config.NewConfig()
+ctx := context.Background()
+```
+Loads application configuration and creates a background context for tool execution.
+
+### 3. Tools whitelist & executor creation
+```go
+toolsToWhitelist := []string{ ... }
+toolsExecutor, err := tools.NewToolsExecutor(ctx, cfg, tools.WithToolsWhitelist(toolsToWhitelist...))
+```
+Specifies which tools the ReWOO agent may use and creates an executor instance.
+
+### 4. Repository details derivation  
+The code trims a trailing `.git` from the supplied URL, then:
+* If it matches the default repo URL → sets `repoName = "Reflexia"` and owner/repo string accordingly.
+* Otherwise derives the base name and splits the path to build an `ownerAndRepo` string.
+
+### 5. Task description construction  
+A large multi‑line template is built with `fmt.Sprintf`.  
+It contains a step‑by‑step plan for the ReWOO agent, including:
+1. Issue understanding (WebReader → LLM → SemanticSearch).  
+2. Development environment setup (git clone, cd, safe.directory config, tree/ls).  
+3. File discovery & modification steps with placeholders for file paths and commands.  
+4. Verification steps (cat, git status, diff).
+
+The template is populated with the parsed flags and derived repo name.
+
+### 6. ReWOO query execution  
+```go
+rewooQueryArgs := tools.ReWOOToolArgs{ Query: taskDescription }
+rewooQueryBytes, err := json.Marshal(rewooQueryArgs)
+result, err := toolsExecutor.CallTool(ctx,
+    tools.ReWOOToolDefinition.Name,
+    string(rewooQueryBytes),
+)
+```
+The constructed description is marshaled to JSON and sent to the ReWOO tool via the executor. Result output is printed to stdout.
+
+### 7. Logging & output
+Informational logs record repository, issue, context length, and task description size.  
+After execution, a summary of the agent’s report and operational reminders are printed.
+
+---
+
+## Relations between code entities
+
+* `toolsExecutor` is created once at program start; it receives the configuration and a whitelist of tool names.
+* The `repoName`, `ownerAndRepo`, and `issue` variables feed directly into the prompt template, ensuring that the ReWOO agent knows which repository to target and what issue to address.
+* The JSON marshaling step (`rewooQueryArgs`) is the bridge between Go code and the ReWOO tool; it serializes the prompt string for consumption by the executor.
+
+---
+
+## Unclear places / dead code
+
+No explicit `TODO:` comments or unused imports are present in this file. All referenced variables and functions appear to be used, so no dead code was detected.
+
+---

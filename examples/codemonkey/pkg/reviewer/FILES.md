@@ -1,36 +1,45 @@
 # examples/codemonkey/pkg/reviewer/reviewer.go  
-## Package: `reviewer` Summary  
+# Package / Component    
+**reviewer**  
   
-This package provides functionality for gathering information about a GitHub issue using external tools and creating an actionable plan for developers. It leverages the `libagent` library for configuration and tool execution, along with logging via `zerolog`. The core function is `GatherInfo`, which orchestrates the process of researching an issue, synthesizing findings, and returning a structured result string.  
+The file implements a small helper that gathers information from a GitHub issue and returns it as a string. It is part of the *reviewer* package, which orchestrates calls to external tools (ReWOOTool, SemanticSearch, DDGSearch) via a `ToolsExecutor`.  
   
-**Imports:**  
+## Imports    
+| Package | Purpose |  
+|---------|---------|  
+| `context` | Provides background context for tool execution |  
+| `encoding/json` | Serialises the query struct before sending it to the executor |  
+| `fmt` | Formats the prompt string in `CreatePrompt` |  
+| `os` | Writes logs to standard error output |  
+| `github.com/Swarmind/libagent/pkg/config` | Loads configuration for the executor |  
+| `github.com/Swarmind/libagent/pkg/tools` | Tool definitions and executor helpers |  
+| `github.com/rs/zerolog` | Logging level control |  
+| `github.com/rs/zerolog/log` | Logger instance |  
   
-*   `context`: For managing context in asynchronous operations.  
-*   `encoding/json`: For marshaling data to JSON format for tool communication.  
-*   `fmt`: For formatted string output (prompt creation).  
-*   `os`: For interacting with the operating system, specifically standard error stream logging.  
-*   `github.com/Swarmind/libagent/pkg/config`: For loading configuration settings.  
-*   `github.com/Swarmind/libagent/pkg/tools`: For executing external tools (ReWOOTool, DDGSearch, SemanticSearch).  
-*   `github.com/rs/zerolog`: For structured logging.  
-*   `github.com/rs/zerolog/log`: For global logger configuration and usage.  
+## External data / input sources    
+* **Configuration** – loaded via `config.NewConfig()`; this supplies the executor with runtime settings.    
+* **Tool whitelist** – a slice of tool names (`ReWOOToolDefinition`, `DDGSearchDefinition`, `SemanticSearchDefinition`) that will be used by the executor.    
+* **Issue & repo name** – passed into `GatherInfo` and forwarded to `CreatePrompt`.    
   
-**External Data / Input Sources:**  
+## TODOs    
+No explicit `TODO:` comments are present in this file, but the following actions could be considered for future work:    
+1. Add error handling for JSON marshaling failures.    
+2. Cache or reuse the executor instead of creating a new one each call.  
   
-*   `issue` (string): The GitHub issue string to analyze.  
-*   `repoName` (string): The name of the repository containing the issue.  
-*   Configuration loaded from `config.NewConfig()`.  The exact source of this configuration is not defined within this file but assumed to be external (e.g., environment variables, config files).  
+## Summary of major code parts  
   
-**Major Code Parts:**  
+### `GatherInfo`  
+* Sets global log level to debug and configures the logger.  
+* Loads configuration, creates a context, and builds a whitelist of tools.  
+* Instantiates a `ToolsExecutor` with the given context, config, and tool list.  
+* Builds a query struct (`ReWOOToolArgs`) using `CreatePrompt`, marshals it into JSON, and calls the ReWOO tool via the executor.  
+* Returns the raw string result from the tool call.  
   
-### 1. `GatherInfo` Function: Core Logic  
+### `CreatePrompt`  
+* Constructs a detailed prompt for the ReWOO tool.    
+  * The prompt instructs the AI to research an issue in a repository, using semantic search and DDG search tools.    
+  * It includes placeholders for the issue title, repo name, and the names of the two tools that will be used.    
+* Returns the formatted string ready for JSON serialization.  
   
-This function orchestrates the entire process. It initializes logging, loads configuration, sets up a tools executor with whitelisted tools (`ReWOOTool`, `DDGSearch`, `SemanticSearch`), constructs a prompt based on the issue and repository name, calls the ReWOOTool with the prompt as input, and returns the result. Error handling is present throughout (fatal errors logged). The function also includes deferred cleanup of the tools executor to prevent resource leaks.  
-  
-### 2. `CreatePrompt` Function: Prompt Generation  
-  
-This function constructs a detailed prompt string that guides an AI agent in analyzing the GitHub issue. It uses formatted strings (`fmt.Sprintf`) to inject the issue and repository name into the prompt template. The prompt instructs the agent to research using specific tools (SemanticSearch, DDGSearch), synthesize findings, and produce a structured output including issue summary, desired outcome, relevant information, affected files, and code analysis snippets with comments.  The prompt explicitly warns against considering TODOs or commented-out code as instructions.  
-  
-**TODO Comments:**  
-  
-There are no explicit `// TODO:` style comments in the provided code snippet. However, the prompt itself contains implicit "TODO" like directives for the AI agent (e.g., "RESEARCH," "SYNTHESIS & ANALYSIS," "CREATE THE OUTPUT"). These aren't actionable items *within* the Go code but rather instructions for an external process consuming the generated prompt.  
+The file is self‑contained: it pulls together configuration, tool execution, and prompt generation to produce a single string result that can be consumed by other components in the *reviewer* package.  
   
