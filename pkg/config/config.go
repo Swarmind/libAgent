@@ -43,9 +43,10 @@ type Config struct {
 	CommandExecutorDisable  bool              `env:"COMMAND_EXECUTOR_DISABLE"`
 	CommandExecutorCommands map[string]string `env:"COMMAND_EXECUTOR_CMD_*"`
 
-	DigDisable        bool `env:"DIG_DISABLE"`
-	ShodanDisable     bool `env:"SHDN_DISABLE"`
-	InternetDBDisable bool `env:"IDB_DISABLE"`
+	DigDisable        bool   `env:"DIG_DISABLE"`
+	ShodanDisable     bool   `env:"SHDN_DISABLE"`
+	Shodan_key        string `env:"SHDN_KEY"`
+	InternetDBDisable bool   `env:"IDB_DISABLE"`
 }
 
 // See tmc/langchaingo/llms/options.go

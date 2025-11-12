@@ -17,7 +17,8 @@ import (
 	This example shows usage of command executor with rewoo tool, which are whitelisted.
 */
 
-const Prompt = ` Please scan %s for open ports and generate Metasploit search queries for any found services. Firstly try to use nmap with only -F argument. After that try to continiously exploit target, using %s as LHOST and target address as RHOST and module(s) found from metasploit search. Use cmd/unix/reverse as payload.'`
+// const Prompt = ` Please scan %s for open ports and generate Metasploit search queries for any found services. Firstly try to use nmap with only -F argument. After that try to continiously exploit target, using %s as LHOST and target address as RHOST and module(s) found from metasploit search. Use cmd/unix/reverse as payload.'`
+const Prompt = ` Please lookup for IP of %s. You can use different tools such as dig, internetdb and shodan to find out IP addresses of target. Then try to use nmap with only -F argument for each of found addresses if any. After that create metasploit queries for each of found open ports if any using msf_search tool.`
 
 type NmapToolArgs struct {
 	IP string `json:"ip"`
@@ -44,7 +45,10 @@ func main() {
 		tools.CommandExecutorDefinition.Name,
 		tools.NmapToolDefinition.Name,
 		tools.MsfSearchToolDefinition.Name,
-		tools.ExploitToolDefinition.Name, // WARN! THIS WILL RUN THE ACTUAL EXPLOIT, THIS IS DANGEROUSE ZONE! USE IT ONLY WHEN READY!
+		tools.DigToolDefinition.Name,
+		tools.InternetDBToolDefinition.Name,
+		tools.ShodanToolDefinition.Name,
+		//tools.ExploitToolDefinition.Name, // WARN! THIS WILL RUN THE ACTUAL EXPLOIT, THIS IS DANGEROUSE ZONE! USE IT ONLY WHEN READY!
 	))
 	if err != nil {
 		log.Fatal().Err(err).Msg("new tools executor")
@@ -55,6 +59,7 @@ func main() {
 		}
 	}()
 
+	// if addresses already known
 	rhost, exists := os.LookupEnv("HACKER_MSF_RHOST")
 	if !exists {
 		log.Fatal().Msg("HACKER_MSF_RHOST env cannot be empty")
@@ -66,11 +71,24 @@ func main() {
 
 	fmt.Println(rhost, lhost)
 
-	//return
+	shodan_key, exists := os.LookupEnv("SHDN_KEY")
+	if !exists {
+		log.Fatal().Msg("SHDN key env cannot be empty")
+	}
+	fmt.Println(shodan_key)
 
+	// for known IP
+	/*
+		rewooQuery := tools.ReWOOToolArgs{
+			Query: fmt.Sprintf(Prompt, rhost, lhost),
+		}
+	*/
+
+	// if IP is not known then we can setup domain or other target as RHOST and
 	rewooQuery := tools.ReWOOToolArgs{
 		Query: fmt.Sprintf(Prompt, rhost, lhost),
 	}
+
 	rewooQueryBytes, err := json.Marshal(rewooQuery)
 	if err != nil {
 		log.Fatal().Err(err).Msg("json marhsal rewooQuery")
