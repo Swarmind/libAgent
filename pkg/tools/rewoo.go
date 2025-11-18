@@ -86,7 +86,8 @@ func init() {
 			rewooTool := ReWOOTool{
 				ReWOO: rewoo.ReWOO{
 					LLM:                llm,
-					DefaultCallOptions: config.ConifgToCallOptions(cfg.RewOODefaultCallOptions),
+					DefaultCallOptions: config.ConifgToCallOptions(cfg.ReWOODefaultCallOptions),
+					MaxAttempts:        cfg.ReWOOMaxAttempts,
 				},
 			}
 
