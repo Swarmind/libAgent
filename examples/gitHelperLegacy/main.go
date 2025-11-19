@@ -42,7 +42,7 @@ func main() {
 	}
 	log.Debug().Str("issue_input", *issueInput).Msg("Received issue input")
 
-	cfg, err := config.NewConfig("")
+	cfg, err := config.NewConfig()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize application config.")
 		return

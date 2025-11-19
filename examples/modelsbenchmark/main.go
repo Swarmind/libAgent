@@ -65,7 +65,7 @@ func main() {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
-	cfg, err := config.NewConfig("")
+	cfg, err := config.NewConfig()
 	if err != nil {
 		log.Fatal().Err(err).Msg("new config")
 	}

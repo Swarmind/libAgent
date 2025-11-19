@@ -88,10 +88,10 @@ type DefaultCallOptions struct {
 	ResponseMIMEType *string `env:"RESPONSE_MIME_TYPE"`
 }
 
-func NewConfig(path string) (Config, error) {
+func NewConfig(path ...string) (Config, error) {
 	cfg := Config{}
 
-	if err := godotenv.Load(path); err != nil {
+	if err := godotenv.Load(path...); err != nil {
 		log.Warn().Err(err).Msg(".env file load")
 	}
 
