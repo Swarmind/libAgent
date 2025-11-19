@@ -21,7 +21,8 @@ type Config struct {
 	DefaultCallOptions DefaultCallOptions `env:"AI_DEFAULT_CALL_OPTION"`
 
 	ReWOODisable            bool               `env:"REWOO_DISABLE"`
-	RewOODefaultCallOptions DefaultCallOptions `env:"REWOO_DEFAULT_CALL_OPTION"`
+	ReWOODefaultCallOptions DefaultCallOptions `env:"REWOO_DEFAULT_CALL_OPTION"`
+	ReWOOMaxAttempts        int                `env:"REWOO_MAX_ATTEMPTS"`
 
 	SemanticSearchDisable        bool   `env:"SEMANTIC_SEARCH_DISABLE"`
 	SemanticSearchAIURL          string `env:"AI_URL,SEMANTIC_SEARCH_AI_URL"`
@@ -42,6 +43,11 @@ type Config struct {
 
 	CommandExecutorDisable  bool              `env:"COMMAND_EXECUTOR_DISABLE"`
 	CommandExecutorCommands map[string]string `env:"COMMAND_EXECUTOR_CMD_*"`
+
+	ShodanDisable     bool   `env:"SHDN_DISABLE"`
+	ShodanAPIKey      string `env:"SHDN_KEY"`
+	DigDisable        bool   `env:"DIG_DISABLE"`
+	InternetDBDisable bool   `env:"IDB_DISABLE"`
 }
 
 // See tmc/langchaingo/llms/options.go
@@ -82,10 +88,10 @@ type DefaultCallOptions struct {
 	ResponseMIMEType *string `env:"RESPONSE_MIME_TYPE"`
 }
 
-func NewConfig() (Config, error) {
+func NewConfig(path ...string) (Config, error) {
 	cfg := Config{}
 
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load(path...); err != nil {
 		log.Warn().Err(err).Msg(".env file load")
 	}
 

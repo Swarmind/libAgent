@@ -26,10 +26,6 @@ const BuilderPrompt = `Here is the step by step actions plan, use the command ex
 	- Return me the path to built binary
 `
 
-type NmapToolArgs struct {
-	IP string `json:"ip"`
-}
-
 func main() {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"strings"
 
 	"github.com/Swarmind/libagent/internal/tools"
 	"github.com/Swarmind/libagent/pkg/config"
@@ -118,18 +117,6 @@ func (s MsfSearchTool) Call(ctx context.Context, input string) (string, error) {
 	}
 	fmt.Println("results: ", results)
 	return string(respBytes), nil
-}
-
-func GenerateMsfQueries(ports []PortInfo) []string {
-	var queries []string
-	for _, port := range ports {
-		if strings.ToLower(port.State) == "open" {
-			queries = append(queries, fmt.Sprintf("type:exploit name:%s", port.Service))
-			queries = append(queries, fmt.Sprintf("port %s", port.Port))
-		}
-	}
-
-	return queries
 }
 
 func init() {

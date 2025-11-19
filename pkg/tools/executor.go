@@ -74,6 +74,12 @@ func (s *CommandExecutorTool) RunCommand(input string) (string, error) {
 		s.process.Capture()
 		// Expect default bash shell prompt end
 		s.process.Expect("$")
+		// Send raw mode
+		s.process.Send("stty raw\n")
+		s.process.Expect("$")
+		// Send no echo
+		s.process.Send("stty -echo\n")
+		s.process.Expect("$")
 
 		s.process.Send(fmt.Sprintf("export PATH=%s\n", os.Getenv("PATH")))
 		s.process.Send(fmt.Sprintf("export HOME=%s\n", os.Getenv("HOME")))
@@ -81,12 +87,7 @@ func (s *CommandExecutorTool) RunCommand(input string) (string, error) {
 		// Create a random UUID to set as a prompt to be sure that there are command end
 		s.prompt = uuid.New().String()
 		s.process.Send(fmt.Sprintf("PS1=%s\n", s.prompt))
-		// Expect sent command
-		s.process.Expect(fmt.Sprintf("PS1=%s", s.prompt))
 		// Expect changed prompt
-		s.process.Expect(s.prompt)
-		// Send raw mode
-		s.process.Send("stty raw\n")
 		s.process.Expect(s.prompt)
 		// Discard output by draining output buffer
 		s.process.Collect()

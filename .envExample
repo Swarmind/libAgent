@@ -22,6 +22,7 @@ LIBAGENT_AI_DEFAULT_CALL_OPTION_JSON=
 LIBAGENT_AI_DEFAULT_CALL_OPTION_RESPONSE_MIME_TYPE=
 
 LIBAGENT_REWOO_DISABLE=false
+LIBAGENT_REWOO_MAX_ATTEMPTS=2
 LIBAGENT_REWOO_DEFAULT_CALL_OPTION_MODEL=
 LIBAGENT_REWOO_DEFAULT_CALL_OPTION_CANDIDATE_COUNT=
 LIBAGENT_REWOO_DEFAULT_CALL_OPTION_MAX_TOKENS=
@@ -62,3 +63,4 @@ LIBAGENT_COMMAND_EXECUTOR_CMD_PYTHON="python3
 Use 'python3', as there is no alias for just 'python' at the host machine"
 LIBAGENT_COMMAND_EXECUTOR_CMD_ECHO="echo
 since you are using bash - echo without -e flag is not interpreting escape symbols and so didn't work for writing files properly. Consider using printf or echo -e flag"
+LIBAGENT_SHDN_KEY="..."
