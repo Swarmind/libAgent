@@ -80,6 +80,9 @@ type DefaultCallOptions struct {
 	// Supported MIME types are: text/plain: (default) Text output.
 	// application/env: JSON response in the response candidates.
 	ResponseMIMEType *string `env:"RESPONSE_MIME_TYPE"`
+
+	// Used for swarmind internal agent name/call id specifiers
+	Metadata map[string]interface{}
 }
 
 func NewConfig() (Config, error) {

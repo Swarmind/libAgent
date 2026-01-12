@@ -8,6 +8,7 @@ import (
 
 	"github.com/Swarmind/libagent/pkg/config"
 	"github.com/Swarmind/libagent/pkg/tools"
+	"github.com/google/uuid"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -44,6 +45,10 @@ func main() {
 	cfg, err := config.NewConfig()
 	if err != nil {
 		log.Fatal().Err(err).Msg("new config")
+	}
+	cfg.DefaultCallOptions.Metadata = map[string]interface{}{
+		"Agent-Name":    "CommandsAgentDemo",
+		"Agent-Call-ID": uuid.New().String(),
 	}
 
 	ctx := context.Background()
