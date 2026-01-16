@@ -53,6 +53,9 @@ func ConifgToCallOptions(cfg DefaultCallOptions) []llms.CallOption {
 	if cfg.ResponseMIMEType != nil {
 		opts = append(opts, llms.WithResponseMIMEType(*cfg.ResponseMIMEType))
 	}
+	if len(cfg.Metadata) > 0 {
+		opts = append(opts, llms.WithMetadata(cfg.Metadata))
+	}
 
 	return opts
 }
