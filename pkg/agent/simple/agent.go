@@ -17,7 +17,7 @@ func (a *Agent) Run(
 	opts ...llms.CallOption,
 ) (llms.MessageContent, error) {
 	response, err := a.LLM.GenerateContent(
-		ctx, state,
+		ctx, state, opts...,
 	)
 	if err != nil {
 		return llms.MessageContent{}, err
@@ -38,6 +38,7 @@ func (a *Agent) SimpleRun(
 			llms.TextParts(llms.ChatMessageTypeHuman,
 				input,
 			)},
+		opts...,
 	)
 	if err != nil {
 		return "", err
